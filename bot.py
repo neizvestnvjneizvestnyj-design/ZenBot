@@ -64,12 +64,11 @@ LOG_CH_ID = 1444796054313766922
 BAN_LOG_CH_ID = 1436891992150769664     
 MOD_LOG_CH_ID = 1464383652866556039     
 
-# ID-ul canalului de Welcome/Left cerut de tine:
 WELCOME_CH_ID = 1325279589915955321 
-
 BOT_COMMANDS_CH = 1436559828859359373
 CHAT_CHANNEL_ID = 1436554745622827258
 STAFF_CMD_CHANNEL = 1449824932371632248
+UPDATE_LOG_CH_ID = 1477448913827921922 # Canalul de update cod
 
 WARN1_ROLE_ID = 1436538867850416289
 W2_ID = 1436538789311811624
@@ -79,6 +78,15 @@ MY_GIF = "https://media.discordapp.net/attachments/1440112412266205194/146184343
 BOOST_GIF = "https://media.tenor.com/7123Lof2_mEAAAAC/make-it-rain-money.gif"
 CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 
+# --- CHANGELOG AUTOMAT ---
+VERSION = "2.0"
+CHANGES_LOG = """
+✅ **Sincronizare Cod**: Toate cerințele anterioare au fost comasate.
+✅ **Sistem de Versiuni**: Acum botul raportează automat v2.0.
+✅ **Auto-Upload Securizat**: La fiecare pornire, codul sursă `bot.py` este trimis pe canalul de update.
+✅ **Integritate**: Nu au fost modificate logica sancțiunilor sau ID-urile.
+"""
+
 XP_COOLDOWN = 8
 last_xp_time = {}  
 
@@ -86,25 +94,14 @@ last_xp_time = {}
 async def send_boost_announcement(member, guild):
     channel = bot.get_channel(BOOST_CH_ID)
     if not channel: return
-
     content = f"{member.mention} is RICH ASFFF!! 💸"
-
-    embed = discord.Embed(
-        title=f"{CUSTOM_EMOJI} **Another Star on the Board!**",
-        color=0xf47fff,
-        timestamp=datetime.datetime.now(UTC)
-    )
-    
-    embed.description = (
-        f"💎 | A huge shoutout to **{member.name}** for boosting!\n\n"
-        f"✨ | You just made the server even better.\n"
-        f"📈 | We are now at **{guild.premium_subscription_count}** boosts!\n\n"
-        f"🎁 | Claim your rewards here: <#{BENEFITS_CH_ID}>"
-    )
-    
+    embed = discord.Embed(title=f"{CUSTOM_EMOJI} **Another Star on the Board!**", color=0xf47fff, timestamp=datetime.datetime.now(UTC))
+    embed.description = (f"💎 | A huge shoutout to **{member.name}** for boosting!\n\n"
+                        f"✨ | You just made the server even better.\n"
+                        f"📈 | We are now at **{guild.premium_subscription_count}** boosts!\n\n"
+                        f"🎁 | Claim your rewards here: <#{BENEFITS_CH_ID}>")
     embed.set_image(url=BOOST_GIF)
     embed.set_footer(text=f"Server Level: {guild.premium_tier} • We appreciate you!")
-    
     await channel.send(content=content, embed=embed)
 
 # ================= FUNCTIE LOGURI =================
@@ -114,10 +111,8 @@ async def send_sanction_log(action, staff, member, reason="Nespecificat", durati
     elif any(x in act_low for x in ["mute", "kick", "warn", "unmute", "unwarn", "lock", "unlock", "slow"]):
         target_ch_id = MOD_LOG_CH_ID
     else: target_ch_id = LOG_CH_ID
-
     channel = bot.get_channel(target_ch_id)
     if not channel: return
-
     embed = discord.Embed(title=f"⛔ {action} | {member.name if hasattr(member, 'name') else str(member)}", color=0x2b2d31, timestamp=datetime.datetime.now(UTC))
     embed.set_thumbnail(url=MY_GIF)
     embed.add_field(name="👤 User", value=member.mention if hasattr(member, 'mention') else str(member), inline=True)
@@ -223,7 +218,6 @@ async def warn(ctx, member: discord.Member, *, reason="Nespecificat"):
     data["warnings"][uid] = data["warnings"].get(uid, 0) + 1
     count = data["warnings"][uid]
     save_data(data)
-
     if count >= 3:
         try:
             await member.ban(reason=f"3/3 warns | Ultimul: {reason}")
@@ -277,16 +271,12 @@ async def unmute(ctx, member: discord.Member):
 async def on_member_join(member):
     channel = bot.get_channel(WELCOME_CH_ID)
     if not channel: return
-    
-    welcome_msg = (
-        f"🎉 Bun venit, <@&1438997493374255155> {member.mention}\n"
-        f"Ne bucurăm că ai intrat pe server! 🎁✨\n"
-        f"Înainte să începi să vorbești cu ceilalți și să explorezi toate canalele, "
-        f"te rugăm să treci prin verificare și să-ți activezi rolul <@&1438996505964052601>\n\n"
-        f"Este un pas rapid și ne ajută să menținem comunitatea sigură și plăcută pentru toată lumea. ❄️🤍\n"
-        f"Dacă ai nevoie de ajutor, nu ezita să întrebi! 💬"
-    )
-    
+    welcome_msg = (f"🎉 Bun venit, <@&1438997493374255155> {member.mention}\n"
+                  f"Ne bucurăm că ai intrat pe server! 🎁✨\n"
+                  f"Înainte să începi să vorbești cu ceilalți și să explorezi toate canalele, "
+                  f"te rugăm să treci prin verificare și să-ți activezi rolul <@&1438996505964052601>\n\n"
+                  f"Este un pas rapid și ne ajută să menținem comunitatea sigură și plăcută pentru toată lumea. ❄️🤍\n"
+                  f"Dacă ai nevoie de ajutor, nu ezita să întrebi! 💬")
     embed = discord.Embed(description=welcome_msg, color=0x2b2d31)
     embed.set_thumbnail(url=member.display_avatar.url)
     await channel.send(embed=embed)
@@ -295,13 +285,9 @@ async def on_member_join(member):
 async def on_member_remove(member):
     channel = bot.get_channel(WELCOME_CH_ID)
     if not channel: return
-    
-    leave_msg = (
-        f"👋 **{member.name}** ai părăsit serverul.\n"
-        f"Ne pare rău să te vedem plecând și îți dorim numai bine mai departe. ❄️✨\n"
-        f"Dacă vreodată vrei să revii, ușa noastră rămâne deschisă."
-    )
-    
+    leave_msg = (f"👋 **{member.name}** ai părăsit serverul.\n"
+                f"Ne pare rău să te vedem plecând și îți dorim numai bine mai departe. ❄️✨\n"
+                f"Dacă vreodată vrei să revii, ușa noastră rămâne deschisă.")
     embed = discord.Embed(description=leave_msg, color=0x2b2d31)
     embed.set_thumbnail(url=member.display_avatar.url)
     await channel.send(embed=embed)
@@ -383,22 +369,15 @@ async def serverinfo(ctx):
 async def on_message(message):
     if message.author.bot or not message.guild: return
 
-    # --- AUTO-DELETE COMENZI (Șterge mesajul cu # după 10 secunde) ---
+    # --- AUTO-DELETE COMENZI ---
     if message.content.startswith("#"):
         async def delete_msg():
             await asyncio.sleep(10)
-            try:
-                await message.delete()
-            except:
-                pass
+            try: await message.delete()
+            except: pass
         bot.loop.create_task(delete_msg())
 
-    if message.type in [
-        discord.MessageType.premium_guild_subscription, 
-        discord.MessageType.premium_guild_tier_1, 
-        discord.MessageType.premium_guild_tier_2, 
-        discord.MessageType.premium_guild_tier_3
-    ]:
+    if message.type in [discord.MessageType.premium_guild_subscription, discord.MessageType.premium_guild_tier_1, discord.MessageType.premium_guild_tier_2, discord.MessageType.premium_guild_tier_3]:
         await send_boost_announcement(message.author, message.guild)
 
     if message.channel.id == CHAT_CHANNEL_ID:
@@ -447,6 +426,20 @@ async def on_message(message):
 async def on_ready():
     print(f"✅ {bot.user} ONLINE")
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="https://discord.gg/S96dauCsH"))
+    
+    # --- LOGICA UPLOAD AUTOMAT COD ---
+    channel = bot.get_channel(UPDATE_LOG_CH_ID)
+    if channel:
+        await channel.purge(limit=15)
+        file_path = "bot.py"
+        if os.path.exists(file_path):
+            current_time = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+            embed = discord.Embed(title=f"🚀 Versiunea {VERSION} este activă!", color=0x00ff00, timestamp=datetime.datetime.now(UTC))
+            embed.add_field(name="📅 Data & Ora", value=current_time, inline=True)
+            embed.add_field(name="📝 Ce s-a modificat:", value=CHANGES_LOG, inline=False)
+            embed.set_footer(text="Codul sursă a fost reîncărcat cu succes.")
+            await channel.send(embed=embed)
+            await channel.send(content="💾 **Codul sursă complet:**", file=discord.File(file_path))
 
 keep_alive()
 bot.run(TOKEN)

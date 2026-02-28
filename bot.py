@@ -63,7 +63,9 @@ BENEFITS_CH_ID = 1476425405304012843
 LOG_CH_ID = 1444796054313766922         
 BAN_LOG_CH_ID = 1436891992150769664     
 MOD_LOG_CH_ID = 1464383652866556039     
-WELCOME_CH_ID = 1436554745622827258 # Canalul unde se trimit mesajele de join/leave
+
+# ID-ul canalului de Welcome/Left cerut de tine:
+WELCOME_CH_ID = 1325279589915955321 
 
 BOT_COMMANDS_CH = 1436559828859359373
 CHAT_CHANNEL_ID = 1436554745622827258
@@ -270,7 +272,7 @@ async def unmute(ctx, member: discord.Member):
     await ctx.send(f"🔊 {member.mention} unmute.", delete_after=5)
     await send_sanction_log("Unmute", ctx.author, member, "Manual")
 
-# ================= EVENIMENTE =================
+# ================= EVENIMENTE WELCOME / LEFT =================
 @bot.event
 async def on_member_join(member):
     channel = bot.get_channel(WELCOME_CH_ID)
@@ -305,16 +307,17 @@ async def on_member_remove(member):
     embed.set_thumbnail(url=member.display_avatar.url)
     await channel.send(embed=embed)
 
+# ================= RESTUL EVENIMENTELOR =================
 @bot.event
 async def on_voice_state_update(member, before, after):
     log_ch = bot.get_channel(LOG_CH_ID)
     if not log_ch: return
     if before.channel is None and after.channel is not None:
         emb = discord.Embed(title="📥 Voice Join", description=f"{member.mention} a intrat pe {after.channel.mention}", color=0x43b581, timestamp=datetime.datetime.now(UTC))
-        await log_ch.send(embed=emb)
+        await log_ch.send(emb)
     elif before.channel is not None and after.channel is None:
         emb = discord.Embed(title="📤 Voice Leave", description=f"{member.mention} a ieșit de pe **{before.channel.name}**", color=0xf04747, timestamp=datetime.datetime.now(UTC))
-        await log_ch.send(embed=emb)
+        await log_ch.send(emb)
 
 @bot.event
 async def on_message_delete(message):

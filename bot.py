@@ -289,7 +289,7 @@ async def on_member_join(member):
     
     embed = discord.Embed(description=welcome_msg, color=0x2b2d31)
     embed.set_thumbnail(url=member.display_avatar.url)
-    embed.set_image(url=MY_GIF)
+    # embed.set_image(url=MY_GIF)  <-- ACEASTA A FOST ELIMINATA
     await channel.send(embed=embed)
 
 @bot.event

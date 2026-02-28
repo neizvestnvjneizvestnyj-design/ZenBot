@@ -58,6 +58,7 @@ TRIAL_ID = 1444684277110542368
 STAFF_ID = 1325279044396126261
 BOOST_ROLE_MIN = 1411137733975347293  # Rolul minim care poate folosi #boost
 BOOST_CH_ID = 1476419627482611762      # Canalul de boost-uri
+BENEFITS_CH_ID = 1476425405304012843   # Noul canal de beneficii
 
 LOG_CH_ID = 1444796054313766922         
 BAN_LOG_CH_ID = 1436891992150769664     
@@ -83,20 +84,24 @@ async def send_boost_announcement(member, guild):
     channel = bot.get_channel(BOOST_CH_ID)
     if not channel: return
 
-    content = f"<3 {member.mention}'s Is RICH ASFFF!!"
+    # Mesaj text deasupra embed-ului (fără <3)
+    content = f"{member.mention} is RICH ASFFF!! 💸"
 
     embed = discord.Embed(
-        title=f"{CUSTOM_EMOJI} ; we got a new booster!",
+        title=f"{CUSTOM_EMOJI} **Another Star on the Board!**",
         color=0xf47fff,
         timestamp=datetime.datetime.now(UTC)
     )
+    
     embed.description = (
-        f"\n🤍 ; thank you **{member.name}** for boosting!\n\n"
-        f"⚡ ; we are currently at **{guild.premium_subscription_count}** boosts!\n\n"
-        f"💰 ; see your **benefits** in <#1436538867850416289>"
+        f"💎 | A big shoutout to **{member.name}** for the support!\n\n"
+        f"✨ | You just made the server a better place.\n"
+        f"📈 | Current boost count: **{guild.premium_subscription_count}**\n\n"
+        f"🎁 | Don't forget to check your rewards in <#{BENEFITS_CH_ID}>"
     )
+    
     embed.set_image(url=BOOST_GIF)
-    embed.set_footer(text=f"Server Boost Level: {guild.premium_tier}")
+    embed.set_footer(text=f"Server Level: {guild.premium_tier} • We appreciate you!")
     
     await channel.send(content=content, embed=embed)
 

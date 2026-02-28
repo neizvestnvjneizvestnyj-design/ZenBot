@@ -289,7 +289,6 @@ async def on_member_join(member):
     
     embed = discord.Embed(description=welcome_msg, color=0x2b2d31)
     embed.set_thumbnail(url=member.display_avatar.url)
-    # embed.set_image(url=MY_GIF)  <-- ACEASTA A FOST ELIMINATA
     await channel.send(embed=embed)
 
 @bot.event
@@ -383,6 +382,16 @@ async def serverinfo(ctx):
 @bot.event
 async def on_message(message):
     if message.author.bot or not message.guild: return
+
+    # --- AUTO-DELETE COMENZI (Șterge mesajul cu # după 10 secunde) ---
+    if message.content.startswith("#"):
+        async def delete_msg():
+            await asyncio.sleep(10)
+            try:
+                await message.delete()
+            except:
+                pass
+        bot.loop.create_task(delete_msg())
 
     if message.type in [
         discord.MessageType.premium_guild_subscription, 

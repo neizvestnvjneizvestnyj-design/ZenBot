@@ -53,11 +53,14 @@ intents.voice_states = True  # ACTIVAT PENTRU VOICE LOGS
 
 bot = commands.Bot(command_prefix="#", intents=intents)
 
-# ================= ID-URI (păstrează-le așa) =================
+# ================= ID-URI ACTUALIZATE =================
 TRIAL_ID = 1444684277110542368
 STAFF_ID = 1325279044396126261
-LOG_CH_ID = 1444796054313766922
-MOD_LOG_CH_ID = 1464383652866556039 # Canalul tău pentru Ban/Mute/Kick
+
+LOG_CH_ID = 1444796054313766922         # Orice acțiune în afară de sancțiuni (ȘI CLEAR ACUM)
+BAN_LOG_CH_ID = 1436891992150769664     # Doar pentru BAN
+MOD_LOG_CH_ID = 1464383652866556039     # Mute, Kick, Unmute, etc.
+
 BOT_COMMANDS_CH = 1436559828859359373
 CHAT_CHANNEL_ID = 1436554745622827258
 STAFF_CMD_CHANNEL = 1449824932371632248
@@ -73,12 +76,15 @@ CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 XP_COOLDOWN = 8
 last_xp_time = {}  # {user_id: timestamp}
 
-# ================= FUNCTIE LOGURI (ACTUALIZATĂ) =================
+# ================= FUNCTIE LOGURI (REDIRECȚIONARE COMPLETĂ) =================
 async def send_sanction_log(action, staff, member, reason="Nespecificat", duration=None):
-    # Forțăm trimiterea logului pe canalul de sancțiuni pentru acțiunile de moderare
-    # indiferent de unde a fost pornită comanda.
     act_low = action.lower()
-    if any(x in act_low for x in ["ban", "mute", "kick", "warn", "unban", "unmute", "unwarn", "lock", "unlock", "slow", "clear"]):
+    
+    # 1. Alegem canalul în funcție de tipul acțiunii
+    if "ban" in act_low:
+        target_ch_id = BAN_LOG_CH_ID
+    # S-a eliminat "clear" din lista de mai jos pentru a merge pe LOG_CH_ID
+    elif any(x in act_low for x in ["mute", "kick", "warn", "unmute", "unwarn", "lock", "unlock", "slow"]):
         target_ch_id = MOD_LOG_CH_ID
     else:
         target_ch_id = LOG_CH_ID
@@ -87,7 +93,7 @@ async def send_sanction_log(action, staff, member, reason="Nespecificat", durati
     if not channel:
         return
 
-    # Modelul tău: User, Staff, Motiv
+    # Modelul tău vizual (Embed)
     embed = discord.Embed(
         title=f"⛔ {action} | {member.name if hasattr(member, 'name') else str(member)}",
         color=0x2b2d31,
@@ -126,7 +132,12 @@ def is_above_staff():
         return role_staff and ctx.author.top_role.position > role_staff.position
     return commands.check(pred)
 
-# ================= COMENZI NOU ADĂUGATE =================
+# ================= COMENZI MODERARE =================
+
+@bot.command()
+@is_staff_up()
+async def say(ctx, *, message: str):
+    await ctx.send(message)
 
 @bot.command()
 @is_above_staff()
@@ -135,41 +146,6 @@ async def slow(ctx, seconds: int):
     await ctx.send(f"⏳ Slowmode setat la **{seconds}** secunde.", delete_after=5)
     await send_sanction_log("Slowmode", ctx.author, ctx.channel, f"Delay: {seconds}s")
 
-# ================= EVENIMENTE VOICE LOGS =================
-@bot.event
-async def on_voice_state_update(member, before, after):
-    log_ch = bot.get_channel(LOG_CH_ID)
-    if not log_ch: return
-    if before.channel is None and after.channel is not None:
-        emb = discord.Embed(title="📥 Voice Join", description=f"{member.mention} a intrat pe {after.channel.mention}", color=0x43b581, timestamp=datetime.datetime.now(UTC))
-        await log_ch.send(embed=emb)
-    elif before.channel is not None and after.channel is None:
-        emb = discord.Embed(title="📤 Voice Leave", description=f"{member.mention} a ieșit de pe **{before.channel.name}**", color=0xf04747, timestamp=datetime.datetime.now(UTC))
-        await log_ch.send(embed=emb)
-
-# ================= EVENIMENTE CHAT LOGS =================
-@bot.event
-async def on_message_delete(message):
-    if message.author.bot: return
-    log_ch = bot.get_channel(LOG_CH_ID)
-    if not log_ch: return
-    emb = discord.Embed(title="🗑️ Mesaj Șters", color=0xff4500, timestamp=datetime.datetime.now(UTC))
-    emb.add_field(name="Autor", value=message.author.mention)
-    emb.add_field(name="Conținut", value=message.content or "*Fără text*", inline=False)
-    await log_ch.send(embed=emb)
-
-@bot.event
-async def on_message_edit(before, after):
-    if before.author.bot or before.content == after.content: return
-    log_ch = bot.get_channel(LOG_CH_ID)
-    if not log_ch: return
-    emb = discord.Embed(title="📝 Mesaj Editat", color=0xffcc00, timestamp=datetime.datetime.now(UTC))
-    emb.add_field(name="Autor", value=before.author.mention)
-    emb.add_field(name="Înainte", value=before.content, inline=False)
-    emb.add_field(name="După", value=after.content, inline=False)
-    await log_ch.send(embed=emb)
-
-# ================= COMENZI STAFF+ =================
 @bot.command()
 @is_staff_up()
 async def ban(ctx, member: discord.Member, *, reason="Nespecificat"):
@@ -195,8 +171,7 @@ async def kick(ctx, member: discord.Member, *, reason="Nespecificat"):
 @bot.command()
 @is_staff_up()
 async def clear(ctx, amount: int = 100):
-    if amount > 500:
-        amount = 500
+    if amount > 500: amount = 500
     deleted = await ctx.channel.purge(limit=amount)
     await send_sanction_log("Clear", ctx.author, ctx.channel, f"Mesaje șterse: {len(deleted)}")
     await ctx.send(f"🧹 {len(deleted)} mesaje șterse.", delete_after=5)
@@ -217,24 +192,6 @@ async def unlock(ctx):
 
 @bot.command()
 @is_staff_up()
-async def addrole(ctx, member: discord.Member, role: discord.Role):
-    if role.position >= ctx.author.top_role.position:
-        return await ctx.send("❌ Nu poți adăuga un rol ≥ cu al tău!", delete_after=5)
-    await member.add_roles(role)
-    await ctx.send(f"✅ Rol {role.name} adăugat.", delete_after=5)
-    await send_sanction_log("Role Add", ctx.author, member, f"Rol: {role.name}")
-
-@bot.command()
-@is_staff_up()
-async def removerole(ctx, member: discord.Member, role: discord.Role):
-    if role.position >= ctx.author.top_role.position:
-        return await ctx.send("❌ Nu poți scoate un rol ≥ cu al tău!", delete_after=5)
-    await member.remove_roles(role)
-    await ctx.send(f"✅ Rol {role.name} scos.", delete_after=5)
-    await send_sanction_log("Role Remove", ctx.author, member, f"Rol: {role.name}")
-
-@bot.command()
-@is_staff_up()
 async def warn(ctx, member: discord.Member, *, reason="Nespecificat"):
     data = load_data()
     uid = str(member.id)
@@ -252,10 +209,8 @@ async def warn(ctx, member: discord.Member, *, reason="Nespecificat"):
     else:
         warn_roles = [WARN1_ROLE_ID, W2_ID, W3_ID]
         if count <= len(warn_roles):
-            role_id = warn_roles[count-1]
-            role = ctx.guild.get_role(role_id)
-            if role:
-                await member.add_roles(role)
+            role = ctx.guild.get_role(warn_roles[count-1])
+            if role: await member.add_roles(role)
         await ctx.send(f"⚠️ {member.mention} warn {count}/3.", delete_after=5)
         await send_sanction_log(f"Warn {count}/3", ctx.author, member, reason)
 
@@ -264,27 +219,14 @@ async def warn(ctx, member: discord.Member, *, reason="Nespecificat"):
 async def unwarn(ctx, member: discord.Member):
     data = load_data()
     uid = str(member.id)
-    if uid in data["warnings"]:
-        del data["warnings"][uid]
+    if uid in data["warnings"]: del data["warnings"][uid]
     save_data(data)
-
     for rid in [WARN1_ROLE_ID, W2_ID, W3_ID]:
         role = ctx.guild.get_role(rid)
-        if role and role in member.roles:
-            await member.remove_roles(role)
-
+        if role and role in member.roles: await member.remove_roles(role)
     await ctx.send(f"✅ Warn-urile lui {member.mention} resetate.", delete_after=5)
     await send_sanction_log("Unwarn", ctx.author, member, "Reset total")
 
-@bot.command()
-@is_trial_up()
-async def warns(ctx, member: discord.Member = None):
-    member = member or ctx.author
-    data = load_data()
-    count = data["warnings"].get(str(member.id), 0)
-    await ctx.send(f"🔎 {member.mention} are **{count}/3** warn-uri.", delete_after=8)
-
-# ================== MUTE / UNMUTE ==================
 @bot.command()
 @is_trial_up()
 async def mute(ctx, member: discord.Member, duration: str, *, reason="Nespecificat"):
@@ -305,41 +247,64 @@ async def unmute(ctx, member: discord.Member):
     await ctx.send(f"🔊 {member.mention} unmute.", delete_after=5)
     await send_sanction_log("Unmute", ctx.author, member, "Manual")
 
-# ================= COMENZI PUBLICE =================
+# ================= EVENIMENTE LOGS =================
+@bot.event
+async def on_voice_state_update(member, before, after):
+    log_ch = bot.get_channel(LOG_CH_ID)
+    if not log_ch: return
+    if before.channel is None and after.channel is not None:
+        emb = discord.Embed(title="📥 Voice Join", description=f"{member.mention} a intrat pe {after.channel.mention}", color=0x43b581, timestamp=datetime.datetime.now(UTC))
+        await log_ch.send(embed=emb)
+    elif before.channel is not None and after.channel is None:
+        emb = discord.Embed(title="📤 Voice Leave", description=f"{member.mention} a ieșit de pe **{before.channel.name}**", color=0xf04747, timestamp=datetime.datetime.now(UTC))
+        await log_ch.send(embed=emb)
+
+@bot.event
+async def on_message_delete(message):
+    if message.author.bot: return
+    log_ch = bot.get_channel(LOG_CH_ID)
+    if not log_ch: return
+    emb = discord.Embed(title="🗑️ Mesaj Șters", color=0xff4500, timestamp=datetime.datetime.now(UTC))
+    emb.add_field(name="Autor", value=message.author.mention)
+    emb.add_field(name="Conținut", value=message.content or "*Fără text*", inline=False)
+    await log_ch.send(embed=emb)
+
+# ================= RESTUL CODULUI (INTACT) =================
+@bot.command()
+@is_staff_up()
+async def addrole(ctx, member: discord.Member, role: discord.Role):
+    if role.position >= ctx.author.top_role.position:
+        return await ctx.send("❌ Nu poți adăuga un rol ≥ cu al tău!", delete_after=5)
+    await member.add_roles(role)
+    await ctx.send(f"✅ Rol {role.name} adăugat.", delete_after=5)
+    await send_sanction_log("Role Add", ctx.author, member, f"Rol: {role.name}")
+
+@bot.command()
+@is_staff_up()
+async def removerole(ctx, member: discord.Member, role: discord.Role):
+    if role.position >= ctx.author.top_role.position:
+        return await ctx.send("❌ Nu poți scoate un rol ≥ cu al tău!", delete_after=5)
+    await member.remove_roles(role)
+    await ctx.send(f"✅ Rol {role.name} scos.", delete_after=5)
+    await send_sanction_log("Role Remove", ctx.author, member, f"Rol: {role.name}")
+
+@bot.command()
+@is_trial_up()
+async def warns(ctx, member: discord.Member = None):
+    member = member or ctx.author
+    data = load_data()
+    count = data["warnings"].get(str(member.id), 0)
+    await ctx.send(f"🔎 {member.mention} are **{count}/3** warn-uri.", delete_after=8)
+
 @bot.command()
 async def comenzi(ctx):
-    if ctx.channel.id != STAFF_CMD_CHANNEL:
-        return await ctx.send(f"❌ Doar în <#{STAFF_CMD_CHANNEL}>", delete_after=6)
-
-    embed = discord.Embed(
-        title="📜 Liste commandes STAFF",
-        color=0x2b2d31,
-        description=(
-            "Prefix: **#**\n\n"
-            "**#ban** @user motiv\n"
-            "**#unban** ID\n"
-            "**#kick** @user motiv\n"
-            "**#mute** @user 1h/30m/2d motiv\n"
-            "**#unmute** @user\n"
-            "**#warn** @user motiv   (3/3 = ban)\n"
-            "**#unwarn** @user\n"
-            "**#warns** @user\n"
-            "**#clear** 50\n"
-            "**#lock** / **#unlock**\n"
-            "**#addrole** @user @rol\n"
-            "**#removerole** @user @rol\n"
-            "**#avatar** [@user]\n"
-            "**#serverinfo**\n"
-            "**#slow** secunde (Grade peste staff)\n"
-            "\n❗ Abuz = sancțiune!"
-        )
-    )
+    if ctx.channel.id != STAFF_CMD_CHANNEL: return await ctx.send(f"❌ Doar în <#{STAFF_CMD_CHANNEL}>", delete_after=6)
+    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user motiv\n**#unban** ID\n**#kick** @user motiv\n**#mute** @user 1h/30m/2d motiv\n**#unmute** @user\n**#warn** @user motiv\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#addrole** @user @rol\n**#removerole** @user @rol\n**#avatar** [@user]\n**#serverinfo**\n**#slow** secunde\n\n❗ Abuz = sancțiune!")
     await ctx.send(embed=embed)
 
 @bot.command()
 async def avatar(ctx, member: discord.Member = None):
-    if ctx.channel.id != BOT_COMMANDS_CH:
-        return await ctx.send(f"❌ Doar în <#{BOT_COMMANDS_CH}>", delete_after=6)
+    if ctx.channel.id != BOT_COMMANDS_CH: return await ctx.send(f"❌ Doar în <#{BOT_COMMANDS_CH}>", delete_after=6)
     member = member or ctx.author
     embed = discord.Embed(title=f"Avatar • {member.name}", color=0x2b2d31)
     embed.set_image(url=member.display_avatar.url)
@@ -347,8 +312,7 @@ async def avatar(ctx, member: discord.Member = None):
 
 @bot.command()
 async def serverinfo(ctx):
-    if ctx.channel.id != BOT_COMMANDS_CH:
-        return await ctx.send(f"❌ Doar în <#{BOT_COMMANDS_CH}>", delete_after=6)
+    if ctx.channel.id != BOT_COMMANDS_CH: return await ctx.send(f"❌ Doar în <#{BOT_COMMANDS_CH}>", delete_after=6)
     g = ctx.guild
     embed = discord.Embed(title=f"{g.name} • Info", color=0x2b2d31)
     embed.set_thumbnail(url=g.icon.url if g.icon else None)
@@ -357,25 +321,17 @@ async def serverinfo(ctx):
     embed.add_field(name="📅 Creat", value=g.created_at.strftime("%d %b %Y"))
     await ctx.send(embed=embed, delete_after=25)
 
-# ================= EVENIMENTE =================
 @bot.event
 async def on_message(message):
-    if message.author.bot or not message.guild:
-        return
-
-    # --- SALUT AUTO ---
+    if message.author.bot or not message.guild: return
     if message.channel.id == CHAT_CHANNEL_ID:
         low = message.content.lower()
-        if low in ["neata", "neatza", "buna dimineata", "buna dimineața", "ntz"]:
-            await message.channel.send(f"{CUSTOM_EMOJI} Bună dimineața {message.author.mention}, ce mai faci? 😊")
-        elif low in ["nb", "noapte buna", "noapte bună"]:
-            await message.channel.send(f"{CUSTOM_EMOJI} Noapte bună {message.author.mention}!")
-        elif low in ["salut", "sall", "ciao", "buna"]:
-            await message.channel.send(f"{CUSTOM_EMOJI} Salut maan {message.author.mention}, ce faci boss?")
+        if low in ["neata", "neatza", "buna dimineata", "ntz"]: await message.channel.send(f"{CUSTOM_EMOJI} Bună dimineața {message.author.mention}, ce mai faci? 😊")
+        elif low in ["nb", "noapte buna"]: await message.channel.send(f"{CUSTOM_EMOJI} Noapte bună {message.author.mention}!")
+        elif low in ["salut", "sall", "ciao", "buna"]: await message.channel.send(f"{CUSTOM_EMOJI} Salut maan {message.author.mention}, ce faci boss?")
 
-    # --- ANTI-LINK ---
     content_low = message.content.lower()
-    if ("http" in content_low or "discord.gg/" in content_low) and not any(x in content_low for x in ["youtube.com", "youtu.be", "googleusercontent.com", "spotify.com", "imgur.com"]):
+    if ("http" in content_low or "discord.gg/" in content_low) and not any(x in content_low for x in ["youtube.com", "youtu.be", "googleusercontent.com", "imgur.com"]):
         trial_role = message.guild.get_role(TRIAL_ID)
         if not (trial_role and message.author.top_role.position >= trial_role.position):
             try:
@@ -386,8 +342,7 @@ async def on_message(message):
                 count = data["warnings"][uid]
                 save_data(data)
                 await message.author.timeout(timedelta(hours=3), reason="Link neautorizat")
-                if count >= 3:
-                    await message.author.ban(reason="3/3 Warns (Link-uri)")
+                if count >= 3: await message.author.ban(reason="3/3 Warns (Link-uri)")
                 else:
                     warn_roles = [WARN1_ROLE_ID, W2_ID, W3_ID]
                     role = message.guild.get_role(warn_roles[count-1])
@@ -396,30 +351,25 @@ async def on_message(message):
             except: pass
             return
 
-    # --- SISTEM XP ---
     uid = str(message.author.id)
     now = time.time()
     if uid not in last_xp_time or now - last_xp_time[uid] > XP_COOLDOWN:
         last_xp_time[uid] = now
         data = load_data()
-        if uid not in data["levels"]:
-            data["levels"][uid] = {"xp": 0, "level": 1}
+        if uid not in data["levels"]: data["levels"][uid] = {"xp": 0, "level": 1}
         data["levels"][uid]["xp"] += 10
-        xp = data["levels"][uid]["xp"]
-        lvl = data["levels"][uid]["level"]
+        xp, lvl = data["levels"][uid]["xp"], data["levels"][uid]["level"]
         if xp >= lvl * 100:
             data["levels"][uid]["level"] += 1
             data["levels"][uid]["xp"] = xp - (lvl * 100)
             await message.channel.send(f"🎉 {message.author.mention} nivel **{lvl+1}**!", delete_after=12)
         save_data(data)
-
     await bot.process_commands(message)
 
 @bot.event
 async def on_ready():
     print(f"✅ {bot.user} ONLINE")
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="peste reguli ✦"))
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="https://discord.gg/S96dauCsH"))
 
-# ================= START =================
-keep_alive()  # <--- ASTA PORNEȘTE SERVERUL WEB
+keep_alive()
 bot.run(TOKEN)

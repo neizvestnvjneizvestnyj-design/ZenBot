@@ -27,7 +27,7 @@ def keep_alive():
     t.start()
 # ===================================================
 
-# ================= Încărcare token (obligatoriu!) =================
+# ================= Încărcare token =================
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
     raise ValueError("❌ DISCORD_TOKEN nu este setat în variabile de mediu!")
@@ -56,9 +56,9 @@ bot = commands.Bot(command_prefix="#", intents=intents)
 # ================= ID-URI ACTUALIZATE =================
 TRIAL_ID = 1444684277110542368
 STAFF_ID = 1325279044396126261
-BOOST_ROLE_MIN = 1411137733975347293  # Rolul minim care poate folosi #boost
-BOOST_CH_ID = 1476419627482611762      # Canalul de boost-uri
-BENEFITS_CH_ID = 1476425405304012843   # Noul canal de beneficii
+BOOST_ROLE_MIN = 1411137733975347293  
+BOOST_CH_ID = 1476419627482611762      
+BENEFITS_CH_ID = 1476425405304012843   
 
 LOG_CH_ID = 1444796054313766922         
 BAN_LOG_CH_ID = 1436891992150769664     
@@ -84,7 +84,7 @@ async def send_boost_announcement(member, guild):
     channel = bot.get_channel(BOOST_CH_ID)
     if not channel: return
 
-    # Mesaj text deasupra embed-ului (fără <3)
+    # Text simplu deasupra (fără inimi)
     content = f"{member.mention} is RICH ASFFF!! 💸"
 
     embed = discord.Embed(
@@ -94,12 +94,13 @@ async def send_boost_announcement(member, guild):
     )
     
     embed.description = (
-        f"💎 | A big shoutout to **{member.name}** for the support!\n\n"
-        f"✨ | You just made the server a better place.\n"
-        f"📈 | Current boost count: **{guild.premium_subscription_count}**\n\n"
-        f"🎁 | Don't forget to check your rewards in <#{BENEFITS_CH_ID}>"
+        f"💎 | A huge shoutout to **{member.name}** for boosting!\n\n"
+        f"✨ | You just made the server even better.\n"
+        f"📈 | We are now at **{guild.premium_subscription_count}** boosts!\n\n"
+        f"🎁 | Claim your rewards here: <#{BENEFITS_CH_ID}>"
     )
     
+    # Am forțat afișarea GIF-ului
     embed.set_image(url=BOOST_GIF)
     embed.set_footer(text=f"Server Level: {guild.premium_tier} • We appreciate you!")
     
@@ -347,8 +348,13 @@ async def serverinfo(ctx):
 async def on_message(message):
     if message.author.bot or not message.guild: return
 
-    # Boost automat (sistem)
-    if "premium_guild_subscription" in str(message.type):
+    # Detectare Boost (sistem automat)
+    if message.type in [
+        discord.MessageType.premium_guild_subscription, 
+        discord.MessageType.premium_guild_tier_1, 
+        discord.MessageType.premium_guild_tier_2, 
+        discord.MessageType.premium_guild_tier_3
+    ]:
         await send_boost_announcement(message.author, message.guild)
 
     if message.channel.id == CHAT_CHANNEL_ID:

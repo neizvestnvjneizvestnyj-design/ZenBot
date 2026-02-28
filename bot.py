@@ -63,6 +63,7 @@ BENEFITS_CH_ID = 1476425405304012843
 LOG_CH_ID = 1444796054313766922         
 BAN_LOG_CH_ID = 1436891992150769664     
 MOD_LOG_CH_ID = 1464383652866556039     
+WELCOME_CH_ID = 1436554745622827258 # Canalul unde se trimit mesajele de join/leave
 
 BOT_COMMANDS_CH = 1436559828859359373
 CHAT_CHANNEL_ID = 1436554745622827258
@@ -84,7 +85,6 @@ async def send_boost_announcement(member, guild):
     channel = bot.get_channel(BOOST_CH_ID)
     if not channel: return
 
-    # Text simplu deasupra (fără inimi)
     content = f"{member.mention} is RICH ASFFF!! 💸"
 
     embed = discord.Embed(
@@ -100,7 +100,6 @@ async def send_boost_announcement(member, guild):
         f"🎁 | Claim your rewards here: <#{BENEFITS_CH_ID}>"
     )
     
-    # Am forțat afișarea GIF-ului
     embed.set_image(url=BOOST_GIF)
     embed.set_footer(text=f"Server Level: {guild.premium_tier} • We appreciate you!")
     
@@ -273,6 +272,40 @@ async def unmute(ctx, member: discord.Member):
 
 # ================= EVENIMENTE =================
 @bot.event
+async def on_member_join(member):
+    channel = bot.get_channel(WELCOME_CH_ID)
+    if not channel: return
+    
+    welcome_msg = (
+        f"🎉 Bun venit, <@&1438997493374255155> {member.mention}\n"
+        f"Ne bucurăm că ai intrat pe server! 🎁✨\n"
+        f"Înainte să începi să vorbești cu ceilalți și să explorezi toate canalele, "
+        f"te rugăm să treci prin verificare și să-ți activezi rolul <@&1438996505964052601>\n\n"
+        f"Este un pas rapid și ne ajută să menținem comunitatea sigură și plăcută pentru toată lumea. ❄️🤍\n"
+        f"Dacă ai nevoie de ajutor, nu ezita să întrebi! 💬"
+    )
+    
+    embed = discord.Embed(description=welcome_msg, color=0x2b2d31)
+    embed.set_thumbnail(url=member.display_avatar.url)
+    embed.set_image(url=MY_GIF)
+    await channel.send(embed=embed)
+
+@bot.event
+async def on_member_remove(member):
+    channel = bot.get_channel(WELCOME_CH_ID)
+    if not channel: return
+    
+    leave_msg = (
+        f"👋 **{member.name}** ai părăsit serverul.\n"
+        f"Ne pare rău să te vedem plecând și îți dorim numai bine mai departe. ❄️✨\n"
+        f"Dacă vreodată vrei să revii, ușa noastră rămâne deschisă."
+    )
+    
+    embed = discord.Embed(description=leave_msg, color=0x2b2d31)
+    embed.set_thumbnail(url=member.display_avatar.url)
+    await channel.send(embed=embed)
+
+@bot.event
 async def on_voice_state_update(member, before, after):
     log_ch = bot.get_channel(LOG_CH_ID)
     if not log_ch: return
@@ -348,7 +381,6 @@ async def serverinfo(ctx):
 async def on_message(message):
     if message.author.bot or not message.guild: return
 
-    # Detectare Boost (sistem automat)
     if message.type in [
         discord.MessageType.premium_guild_subscription, 
         discord.MessageType.premium_guild_tier_1, 

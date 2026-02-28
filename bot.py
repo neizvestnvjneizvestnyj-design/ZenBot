@@ -9,6 +9,23 @@ import datetime
 import json
 from datetime import UTC, timedelta
 import time  # pentru cooldown XP
+from flask import Flask
+from threading import Thread
+
+# ================= KEEP-ALIVE 24/7 =================
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Botul este Online!"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+# ===================================================
 
 # ================= Încărcare token (obligatoriu!) =================
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -139,7 +156,7 @@ async def on_message_delete(message):
     emb = discord.Embed(title="🗑️ Mesaj Șters", color=0xff4500, timestamp=datetime.datetime.now(UTC))
     emb.add_field(name="Autor", value=message.author.mention)
     emb.add_field(name="Conținut", value=message.content or "*Fără text*", inline=False)
-    await log_ch.send(emb=emb)
+    await log_ch.send(embed=emb)
 
 @bot.event
 async def on_message_edit(before, after):
@@ -150,7 +167,7 @@ async def on_message_edit(before, after):
     emb.add_field(name="Autor", value=before.author.mention)
     emb.add_field(name="Înainte", value=before.content, inline=False)
     emb.add_field(name="După", value=after.content, inline=False)
-    await log_ch.send(emb=emb)
+    await log_ch.send(embed=emb)
 
 # ================= COMENZI STAFF+ =================
 @bot.command()
@@ -404,4 +421,5 @@ async def on_ready():
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="peste reguli ✦"))
 
 # ================= START =================
+keep_alive()  # <--- ASTA PORNEȘTE SERVERUL WEB
 bot.run(TOKEN)

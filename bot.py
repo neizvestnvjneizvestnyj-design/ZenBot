@@ -30,7 +30,7 @@ def keep_alive():
 # ================= Încărcare token (obligatoriu!) =================
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
-    raise ValueError("❌ DISCORD_TOKEN nu este setat în variabile de mediu! Pune-l în .env sau în hosting.")
+    raise ValueError("❌ DISCORD_TOKEN nu este setat în variabile de mediu!")
 
 # ================= BAZA DE DATE =================
 def load_data():
@@ -49,17 +49,19 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.moderation = True       
-intents.voice_states = True  # ACTIVAT PENTRU VOICE LOGS
+intents.voice_states = True  
 
 bot = commands.Bot(command_prefix="#", intents=intents)
 
 # ================= ID-URI ACTUALIZATE =================
 TRIAL_ID = 1444684277110542368
 STAFF_ID = 1325279044396126261
+BOOST_ROLE_MIN = 1411137733975347293  # Rolul minim care poate folosi #boost
+BOOST_CH_ID = 1476419627482611762      # Canalul de boost-uri
 
-LOG_CH_ID = 1444796054313766922         # Orice acțiune în afară de sancțiuni (ȘI CLEAR ACUM)
-BAN_LOG_CH_ID = 1436891992150769664     # Doar pentru BAN
-MOD_LOG_CH_ID = 1464383652866556039     # Mute, Kick, Unmute, etc.
+LOG_CH_ID = 1444796054313766922         
+BAN_LOG_CH_ID = 1436891992150769664     
+MOD_LOG_CH_ID = 1464383652866556039     
 
 BOT_COMMANDS_CH = 1436559828859359373
 CHAT_CHANNEL_ID = 1436554745622827258
@@ -70,47 +72,52 @@ W2_ID = 1436538789311811624
 W3_ID = 1450009480417902796
 
 MY_GIF = "https://media.discordapp.net/attachments/1440112412266205194/1461843437694484684/f63ce9f5-d6b6-47d9-91f0-eb1e166ab02a.gif"
+BOOST_GIF = "https://media.tenor.com/7123Lof2_mEAAAAC/make-it-rain-money.gif"
 CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 
-# Cooldown XP per user (secunde)
 XP_COOLDOWN = 8
-last_xp_time = {}  # {user_id: timestamp}
+last_xp_time = {}  
 
-# ================= FUNCTIE LOGURI (REDIRECȚIONARE COMPLETĂ) =================
-async def send_sanction_log(action, staff, member, reason="Nespecificat", duration=None):
-    act_low = action.lower()
-    
-    # 1. Alegem canalul în funcție de tipul acțiunii
-    if "ban" in act_low:
-        target_ch_id = BAN_LOG_CH_ID
-    # S-a eliminat "clear" din lista de mai jos pentru a merge pe LOG_CH_ID
-    elif any(x in act_low for x in ["mute", "kick", "warn", "unmute", "unwarn", "lock", "unlock", "slow"]):
-        target_ch_id = MOD_LOG_CH_ID
-    else:
-        target_ch_id = LOG_CH_ID
+# ================= FUNCTIE ANUNT BOOST =================
+async def send_boost_announcement(member, guild):
+    channel = bot.get_channel(BOOST_CH_ID)
+    if not channel: return
 
-    channel = bot.get_channel(target_ch_id)
-    if not channel:
-        return
+    content = f"<3 {member.mention}'s Is RICH ASFFF!!"
 
-    # Modelul tău vizual (Embed)
     embed = discord.Embed(
-        title=f"⛔ {action} | {member.name if hasattr(member, 'name') else str(member)}",
-        color=0x2b2d31,
+        title=f"{CUSTOM_EMOJI} ; we got a new booster!",
+        color=0xf47fff,
         timestamp=datetime.datetime.now(UTC)
     )
-    embed.set_thumbnail(url=MY_GIF)
+    embed.description = (
+        f"\n🤍 ; thank you **{member.name}** for boosting!\n\n"
+        f"⚡ ; we are currently at **{guild.premium_subscription_count}** boosts!\n\n"
+        f"💰 ; see your **benefits** in <#1436538867850416289>"
+    )
+    embed.set_image(url=BOOST_GIF)
+    embed.set_footer(text=f"Server Boost Level: {guild.premium_tier}")
+    
+    await channel.send(content=content, embed=embed)
 
+# ================= FUNCTIE LOGURI =================
+async def send_sanction_log(action, staff, member, reason="Nespecificat", duration=None):
+    act_low = action.lower()
+    if "ban" in act_low: target_ch_id = BAN_LOG_CH_ID
+    elif any(x in act_low for x in ["mute", "kick", "warn", "unmute", "unwarn", "lock", "unlock", "slow"]):
+        target_ch_id = MOD_LOG_CH_ID
+    else: target_ch_id = LOG_CH_ID
+
+    channel = bot.get_channel(target_ch_id)
+    if not channel: return
+
+    embed = discord.Embed(title=f"⛔ {action} | {member.name if hasattr(member, 'name') else str(member)}", color=0x2b2d31, timestamp=datetime.datetime.now(UTC))
+    embed.set_thumbnail(url=MY_GIF)
     embed.add_field(name="👤 User", value=member.mention if hasattr(member, 'mention') else str(member), inline=True)
     embed.add_field(name="🛡️ Staff", value=staff.mention if staff else "@Sistem Automat", inline=True)
     embed.add_field(name="📄 Motiv", value=reason if reason else "Nespecificat", inline=True)
-
-    if duration:
-        embed.add_field(name="⏳ Detalii", value=duration, inline=True)
-
-    uid = member.id if hasattr(member, 'id') else "N/A"
-    embed.set_footer(text=f"ID: {uid}")
-
+    if duration: embed.add_field(name="⏳ Detalii", value=duration, inline=True)
+    embed.set_footer(text=f"ID: {member.id if hasattr(member, 'id') else 'N/A'}")
     await channel.send(embed=embed)
 
 # ================= VERIFICARI PERMISIUNI =================
@@ -132,12 +139,23 @@ def is_above_staff():
         return role_staff and ctx.author.top_role.position > role_staff.position
     return commands.check(pred)
 
-# ================= COMENZI MODERARE =================
+# ================= COMENZI =================
 
 @bot.command()
 @is_staff_up()
 async def say(ctx, *, message: str):
+    await ctx.message.delete()
     await ctx.send(message)
+
+@bot.command()
+async def boost(ctx, member: discord.Member = None):
+    required_role = ctx.guild.get_role(BOOST_ROLE_MIN)
+    if required_role and ctx.author.top_role.position >= required_role.position:
+        await ctx.message.delete()
+        target = member or ctx.author
+        await send_boost_announcement(target, ctx.guild)
+    else:
+        await ctx.send("❌ Nu ai permisiunea necesară!", delete_after=5)
 
 @bot.command()
 @is_above_staff()
@@ -247,7 +265,7 @@ async def unmute(ctx, member: discord.Member):
     await ctx.send(f"🔊 {member.mention} unmute.", delete_after=5)
     await send_sanction_log("Unmute", ctx.author, member, "Manual")
 
-# ================= EVENIMENTE LOGS =================
+# ================= EVENIMENTE =================
 @bot.event
 async def on_voice_state_update(member, before, after):
     log_ch = bot.get_channel(LOG_CH_ID)
@@ -269,7 +287,6 @@ async def on_message_delete(message):
     emb.add_field(name="Conținut", value=message.content or "*Fără text*", inline=False)
     await log_ch.send(embed=emb)
 
-# ================= RESTUL CODULUI (INTACT) =================
 @bot.command()
 @is_staff_up()
 async def addrole(ctx, member: discord.Member, role: discord.Role):
@@ -324,6 +341,11 @@ async def serverinfo(ctx):
 @bot.event
 async def on_message(message):
     if message.author.bot or not message.guild: return
+
+    # Boost automat (sistem)
+    if "premium_guild_subscription" in str(message.type):
+        await send_boost_announcement(message.author, message.guild)
+
     if message.channel.id == CHAT_CHANNEL_ID:
         low = message.content.lower()
         if low in ["neata", "neatza", "buna dimineata", "ntz"]: await message.channel.send(f"{CUSTOM_EMOJI} Bună dimineața {message.author.mention}, ce mai faci? 😊")

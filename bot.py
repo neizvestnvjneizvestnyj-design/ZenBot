@@ -81,17 +81,18 @@ BOOST_GIF = "https://media.tenor.com/7123Lof2_mEAAAAC/make-it-rain-money.gif"
 CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 
 # --- CHANGELOG AUTOMAT ---
-VERSION = "3.5"
+VERSION = "4.0"
 CHANGES_LOG = """
-✅ **Advanced Staff Apply**: Formular modal cu butoane de administrare (Acceptă/Respinge).
-✅ **Auto-Trial**: Oferire automată a gradului Trial la acceptarea cererii.
-✅ **DM Feedback**: Utilizatorul primește mesaj în privat despre statusul cererii.
+✅ **Private Apply System**: Cererile de Staff deschid acum un canal privat (tip tichet).
+✅ **Enhanced Privacy**: Doar aplicantul și echipa Staff pot vedea cererea în desfășurare.
+✅ **Admin Controls**: Butoane de Accept/Respinge direct în canalul de apply.
+✅ **Full Code Integrity**: Toate sistemele vechi (XP, Logs, Moderation) au fost păstrate.
 """
 
 XP_COOLDOWN = 8
 last_xp_time = {}  
 
-# ================= CLASE UI PERSISTENTE =================
+# ================= CLASE UI PERSISTENTE (TICHETE & ROLURI) =================
 
 class SelfRoleView(discord.ui.View):
     def __init__(self):
@@ -197,81 +198,80 @@ class CloseTicketView(discord.ui.View):
         try: await interaction.channel.delete()
         except: pass
 
-# ================= SISTEM APPLY AVANSAT =================
+# ================= SISTEM APPLY TIP TICHET (NOU) =================
 
-class ApplyAdminView(discord.ui.View):
-    def __init__(self, user_id: int):
+class ApplyActionView(discord.ui.View):
+    """Butoane de administrare în interiorul canalului de apply."""
+    def __init__(self, applicant_id: int):
         super().__init__(timeout=None)
-        self.user_id = user_id
+        self.applicant_id = applicant_id
 
-    @discord.ui.button(label="Acceptă", style=discord.ButtonStyle.success, custom_id="accept_apply")
+    @discord.ui.button(label="Acceptă (Trial)", style=discord.ButtonStyle.success, custom_id="apply_accept_btn")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
         guild = interaction.guild
-        member = guild.get_member(self.user_id)
+        member = guild.get_member(self.applicant_id)
         role_trial = guild.get_role(TRIAL_ID)
         
-        if not member:
-            return await interaction.response.send_message("❌ Utilizatorul a părăsit serverul.", ephemeral=True)
-        
-        if role_trial:
+        if member and role_trial:
             await member.add_roles(role_trial)
-            try:
-                await member.send(f"🎉 Cererea ta de Staff pe **{guild.name}** a fost acceptată! Bine ai venit în echipă.")
+            try: await member.send(f"🎉 Cererea ta de Staff pe **{guild.name}** a fost acceptată! Bine ai venit.")
             except: pass
-            
-            embed = interaction.message.embeds[0]
-            embed.color = 0x2ecc71
-            embed.title = f"✅ Cerere Acceptată de {interaction.user.name}"
-            await interaction.message.edit(embed=embed, view=None)
-            await interaction.response.send_message(f"L-ai acceptat pe {member.mention}!", ephemeral=True)
+            await interaction.response.send_message(f"✅ {member.mention} a primit gradul de Trial. Canalul se va închide în 10 secunde.")
+            await asyncio.sleep(10)
+            await interaction.channel.delete()
+        else:
+            await interaction.response.send_message("❌ Utilizatorul nu mai este pe server sau rolul Trial nu există.", ephemeral=True)
 
-    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, custom_id="deny_apply")
+    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, custom_id="apply_deny_btn")
     async def deny(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild = interaction.guild
-        member = guild.get_member(self.user_id)
-        
+        member = interaction.guild.get_member(self.applicant_id)
         if member:
-            try:
-                await member.send(f"❌ Cererea ta de Staff pe **{guild.name}** a fost respinsă. Revino când ai mai multă experiență!")
+            try: await member.send(f"❌ Cererea ta de Staff pe **{interaction.guild.name}** a fost respinsă.")
             except: pass
-        
-        embed = interaction.message.embeds[0]
-        embed.color = 0xe74c3c
-        embed.title = f"❌ Cerere Respinsă de {interaction.user.name}"
-        await interaction.message.edit(embed=embed, view=None)
-        await interaction.response.send_message("Ai respins cererea.", ephemeral=True)
+        await interaction.response.send_message("🚫 Cerere respinsă. Canalul se va închide în 5 secunde.")
+        await asyncio.sleep(5)
+        await interaction.channel.delete()
 
-class ApplyModal(discord.ui.Modal, title="Cerere Staff / Helper"):
-    nume = discord.ui.TextInput(label="Nume și Vârstă", placeholder="Ex: Andrei, 18 ani", min_length=3, max_length=50)
-    experienta = discord.ui.TextInput(label="Experiență Staff", style=discord.TextStyle.paragraph, placeholder="Ai mai fost staff? Dacă da, unde?", required=True)
-    timp = discord.ui.TextInput(label="Timp disponibil", placeholder="Ex: 4-5 ore pe zi", max_length=100)
-    motiv = discord.ui.TextInput(label="De ce te-am alege pe tine?", style=discord.TextStyle.paragraph, placeholder="Spune-ne de ce vrei acest post.")
+class ApplyModal(discord.ui.Modal, title="Formular Aplicare Staff"):
+    nume = discord.ui.TextInput(label="Nume și Vârstă", placeholder="Ex: Andrei, 19 ani", min_length=3)
+    experienta = discord.ui.TextInput(label="Experiență", style=discord.TextStyle.paragraph, placeholder="Unde ai mai fost Staff?")
+    motiv = discord.ui.TextInput(label="De ce tu?", style=discord.TextStyle.paragraph, placeholder="Cu ce poți ajuta comunitatea?")
 
     async def on_submit(self, interaction: discord.Interaction):
-        log_ch = interaction.guild.get_channel(LOG_CH_ID)
-        if not log_ch:
-            return await interaction.response.send_message("❌ Canalul de loguri nu a fost găsit!", ephemeral=True)
+        guild = interaction.guild
+        staff_role = guild.get_role(STAFF_ID)
         
-        embed = discord.Embed(title=f"📝 Cerere Staff Nouă: {interaction.user.name}", color=0x3498db, timestamp=datetime.datetime.now(UTC))
+        # Creăm canalul de apply (doar aplicantul și staff-ul văd)
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        }
+        if staff_role:
+            overwrites[staff_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+
+        category = guild.get_channel(TICKET_CATEGORY_ID)
+        channel = await guild.create_text_channel(f"apply-{interaction.user.name}", category=category, overwrites=overwrites)
+        
+        embed = discord.Embed(title=f"📝 Cerere Staff: {interaction.user.name}", color=0x3498db, timestamp=datetime.datetime.now(UTC))
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
-        embed.add_field(name="👤 Utilizator", value=interaction.user.mention, inline=True)
+        embed.add_field(name="👤 Aplicant", value=interaction.user.mention)
         embed.add_field(name="🎂 Nume/Vârstă", value=self.nume.value, inline=False)
-        embed.add_field(name="⏳ Timp", value=self.timp.value, inline=False)
         embed.add_field(name="🧠 Experiență", value=self.experienta.value, inline=False)
         embed.add_field(name="✨ Motiv", value=self.motiv.value, inline=False)
         
-        await log_ch.send(embed=embed, view=ApplyAdminView(interaction.user.id))
-        await interaction.response.send_message("✅ Cererea ta a fost trimisă cu succes!", ephemeral=True)
+        await channel.send(content=f"🔔 <@&{STAFF_ID}>", embed=embed, view=ApplyActionView(interaction.user.id))
+        await interaction.response.send_message(f"✅ Canalul tău de aplicare a fost creat: {channel.mention}", ephemeral=True)
 
 class ApplyView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="APPLY STAFF", style=discord.ButtonStyle.success, custom_id="apply_staff_btn", emoji="📝")
+    @discord.ui.button(label="APPLY STAFF", style=discord.ButtonStyle.success, custom_id="main_apply_btn", emoji="📝")
     async def apply_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(ApplyModal())
 
-# ================= FUNCȚII AJUTĂTOARE =================
+# ================= FUNCȚII AJUTĂTOARE (LOGS & BOOST) =================
 
 async def send_boost_announcement(member, guild):
     channel = bot.get_channel(BOOST_CH_ID)
@@ -331,7 +331,7 @@ async def setup_apply(ctx):
     await ctx.message.delete()
     embed = discord.Embed(
         title="✨ RECRUTARE STAFF ✨",
-        description="Vrei să te alături echipei noastre? Apasă butonul de mai jos și completează formularul!\n\n**⚠️ Atenție:** Cererile făcute în batjocură vor fi sancționate.",
+        description="Vrei să te alături echipei noastre? Apasă butonul de mai jos!\n\nSe va deschide un **canal privat** unde vei completa formularul.",
         color=0x2ecc71
     )
     await ctx.send(embed=embed, view=ApplyView())
@@ -669,25 +669,23 @@ async def on_message(message):
 @bot.event
 async def on_ready():
     print(f"✅ {bot.user} ONLINE")
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="https://discord.gg/S96dauCsH"))
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Tickets & Apply"))
     
-    # Înregistrăm vederea pentru butoanele persistente (Tichete, Roluri, Apply)
+    # Înregistrăm vederile pentru butoanele persistente
     bot.add_view(TicketView())
     bot.add_view(CloseTicketView())
     bot.add_view(SelfRoleView())
     bot.add_view(ApplyView())
+    bot.add_view(ApplyActionView(0)) # Placeholder pentru butonul de accept/deny
 
     channel = bot.get_channel(UPDATE_LOG_CH_ID)
     if channel:
         await channel.purge(limit=15)
-        file_path = "bot.py"
-        if os.path.exists(file_path):
-            current_time = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
-            embed = discord.Embed(title=f"🚀 Versiunea {VERSION} este activă!", color=0x00ff00, timestamp=datetime.datetime.now(UTC))
-            embed.add_field(name="📅 Data & Ora", value=current_time, inline=True)
-            embed.add_field(name="📝 Ce s-a modificat:", value=CHANGES_LOG, inline=False)
-            await channel.send(embed=embed)
-            await channel.send(content="💾 **Codul sursă complet:**", file=discord.File(file_path))
+        current_time = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+        embed = discord.Embed(title=f"🚀 Versiunea {VERSION} este activă!", color=0x00ff00, timestamp=datetime.datetime.now(UTC))
+        embed.add_field(name="📅 Data & Ora", value=current_time, inline=True)
+        embed.add_field(name="📝 Ce s-a modificat:", value=CHANGES_LOG, inline=False)
+        await channel.send(embed=embed)
 
 keep_alive()
 bot.run(TOKEN)

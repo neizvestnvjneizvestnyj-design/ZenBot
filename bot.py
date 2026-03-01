@@ -83,8 +83,8 @@ CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 # --- CHANGELOG AUTOMAT ---
 VERSION = "2.3"
 CHANGES_LOG = """
-✅ **Fix Emoji Panou**: Am înlocuit emoji-urile care nu se vedeau cu unele standard.
-✅ **Ticket System**: Butoanele au rămas cele cerute anterior.
+✅ **Fix Emoji Panou**: Am înlocuit emoji-urile care nu se vedeau cu unele standard (⚠️, 👥, 🚫, 👑, ❓, 📢).
+✅ **Ticket System**: Butoanele au rămas cele 5 categorii cerute.
 """
 
 XP_COOLDOWN = 8

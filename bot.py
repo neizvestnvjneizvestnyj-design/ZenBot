@@ -81,16 +81,18 @@ BOOST_GIF = "https://media.tenor.com/7123Lof2_mEAAAAC/make-it-rain-money.gif"
 CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 
 # --- CHANGELOG AUTOMAT ---
-VERSION = "2.6"
+VERSION = "3.5"
 CHANGES_LOG = """
-✅ **Staff Apply**: Sistem nou de cereri helper/staff prin modal (formular).
-✅ **Integritate**: Codul original de 612 rânduri păstrat integral.
+✅ **Advanced Staff Apply**: Formular modal cu butoane de administrare (Acceptă/Respinge).
+✅ **Auto-Trial**: Oferire automată a gradului Trial la acceptarea cererii.
+✅ **DM Feedback**: Utilizatorul primește mesaj în privat despre statusul cererii.
 """
 
 XP_COOLDOWN = 8
 last_xp_time = {}  
 
-# ================= CLASA NOUĂ: SELF-ROLES =================
+# ================= CLASE UI PERSISTENTE =================
+
 class SelfRoleView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -131,7 +133,6 @@ class SelfRoleView(discord.ui.View):
     async def role_wakeup(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.toggle_role(interaction, 1455082758094327922)
 
-# ================= CLASE TICKETS =================
 class TicketView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -196,7 +197,50 @@ class CloseTicketView(discord.ui.View):
         try: await interaction.channel.delete()
         except: pass
 
-# ================= SISTEM APPLY MODAL =================
+# ================= SISTEM APPLY AVANSAT =================
+
+class ApplyAdminView(discord.ui.View):
+    def __init__(self, user_id: int):
+        super().__init__(timeout=None)
+        self.user_id = user_id
+
+    @discord.ui.button(label="Acceptă", style=discord.ButtonStyle.success, custom_id="accept_apply")
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild = interaction.guild
+        member = guild.get_member(self.user_id)
+        role_trial = guild.get_role(TRIAL_ID)
+        
+        if not member:
+            return await interaction.response.send_message("❌ Utilizatorul a părăsit serverul.", ephemeral=True)
+        
+        if role_trial:
+            await member.add_roles(role_trial)
+            try:
+                await member.send(f"🎉 Cererea ta de Staff pe **{guild.name}** a fost acceptată! Bine ai venit în echipă.")
+            except: pass
+            
+            embed = interaction.message.embeds[0]
+            embed.color = 0x2ecc71
+            embed.title = f"✅ Cerere Acceptată de {interaction.user.name}"
+            await interaction.message.edit(embed=embed, view=None)
+            await interaction.response.send_message(f"L-ai acceptat pe {member.mention}!", ephemeral=True)
+
+    @discord.ui.button(label="Respinge", style=discord.ButtonStyle.danger, custom_id="deny_apply")
+    async def deny(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild = interaction.guild
+        member = guild.get_member(self.user_id)
+        
+        if member:
+            try:
+                await member.send(f"❌ Cererea ta de Staff pe **{guild.name}** a fost respinsă. Revino când ai mai multă experiență!")
+            except: pass
+        
+        embed = interaction.message.embeds[0]
+        embed.color = 0xe74c3c
+        embed.title = f"❌ Cerere Respinsă de {interaction.user.name}"
+        await interaction.message.edit(embed=embed, view=None)
+        await interaction.response.send_message("Ai respins cererea.", ephemeral=True)
+
 class ApplyModal(discord.ui.Modal, title="Cerere Staff / Helper"):
     nume = discord.ui.TextInput(label="Nume și Vârstă", placeholder="Ex: Andrei, 18 ani", min_length=3, max_length=50)
     experienta = discord.ui.TextInput(label="Experiență Staff", style=discord.TextStyle.paragraph, placeholder="Ai mai fost staff? Dacă da, unde?", required=True)
@@ -204,12 +248,11 @@ class ApplyModal(discord.ui.Modal, title="Cerere Staff / Helper"):
     motiv = discord.ui.TextInput(label="De ce te-am alege pe tine?", style=discord.TextStyle.paragraph, placeholder="Spune-ne de ce vrei acest post.")
 
     async def on_submit(self, interaction: discord.Interaction):
-        # Trimitem în canalul de LOG-uri standard dacă nu ai unul dedicat
         log_ch = interaction.guild.get_channel(LOG_CH_ID)
         if not log_ch:
             return await interaction.response.send_message("❌ Canalul de loguri nu a fost găsit!", ephemeral=True)
         
-        embed = discord.Embed(title=f"📝 Cerere Staff: {interaction.user.name}", color=0x2ecc71, timestamp=datetime.datetime.now(UTC))
+        embed = discord.Embed(title=f"📝 Cerere Staff Nouă: {interaction.user.name}", color=0x3498db, timestamp=datetime.datetime.now(UTC))
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
         embed.add_field(name="👤 Utilizator", value=interaction.user.mention, inline=True)
         embed.add_field(name="🎂 Nume/Vârstă", value=self.nume.value, inline=False)
@@ -217,8 +260,8 @@ class ApplyModal(discord.ui.Modal, title="Cerere Staff / Helper"):
         embed.add_field(name="🧠 Experiență", value=self.experienta.value, inline=False)
         embed.add_field(name="✨ Motiv", value=self.motiv.value, inline=False)
         
-        await log_ch.send(embed=embed)
-        await interaction.response.send_message("✅ Cererea ta a fost trimisă!", ephemeral=True)
+        await log_ch.send(embed=embed, view=ApplyAdminView(interaction.user.id))
+        await interaction.response.send_message("✅ Cererea ta a fost trimisă cu succes!", ephemeral=True)
 
 class ApplyView(discord.ui.View):
     def __init__(self):
@@ -228,7 +271,8 @@ class ApplyView(discord.ui.View):
     async def apply_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(ApplyModal())
 
-# ================= FUNCTIE ANUNT BOOST =================
+# ================= FUNCȚII AJUTĂTOARE =================
+
 async def send_boost_announcement(member, guild):
     channel = bot.get_channel(BOOST_CH_ID)
     if not channel: return
@@ -242,7 +286,6 @@ async def send_boost_announcement(member, guild):
     embed.set_footer(text=f"Server Level: {guild.premium_tier} • We appreciate you!")
     await channel.send(content=content, embed=embed)
 
-# ================= FUNCTIE LOGURI =================
 async def send_sanction_log(action, staff, member, reason="Nespecificat", duration=None):
     act_low = action.lower()
     if "ban" in act_low: target_ch_id = BAN_LOG_CH_ID
@@ -260,7 +303,8 @@ async def send_sanction_log(action, staff, member, reason="Nespecificat", durati
     embed.set_footer(text=f"ID: {member.id if hasattr(member, 'id') else 'N/A'}")
     await channel.send(embed=embed)
 
-# ================= VERIFICARI PERMISIUNI =================
+# ================= VERIFICĂRI PERMISIUNI =================
+
 def is_trial_up():
     async def pred(ctx):
         role = ctx.guild.get_role(TRIAL_ID)
@@ -287,7 +331,7 @@ async def setup_apply(ctx):
     await ctx.message.delete()
     embed = discord.Embed(
         title="✨ RECRUTARE STAFF ✨",
-        description="Apasă butonul de mai jos pentru a trimite o cerere de Helper/Staff!\n\n**⚠️ Notă:** Cererile la mișto sunt pedepsite.",
+        description="Vrei să te alături echipei noastre? Apasă butonul de mai jos și completează formularul!\n\n**⚠️ Atenție:** Cererile făcute în batjocură vor fi sancționate.",
         color=0x2ecc71
     )
     await ctx.send(embed=embed, view=ApplyView())
@@ -296,7 +340,6 @@ async def setup_apply(ctx):
 @is_staff_up()
 async def setup_roles(ctx):
     await ctx.message.delete()
-    
     descriere_panou = (
         "🎭 **ALEGE-ȚI ROLURILE**\n"
         "Apasă pe butoanele de mai jos pentru a-ți gestiona rolurile:\n"
@@ -311,11 +354,7 @@ async def setup_roles(ctx):
         "✨ ; WAKE UP```\n\n"
         "📢 ; **Alege-ți rolurile preferate apăsând pe butoanele de mai jos!**"
     )
-    
-    embed = discord.Embed(
-        description=descriere_panou,
-        color=0x2b2d31
-    )
+    embed = discord.Embed(description=descriere_panou, color=0x2b2d31)
     await ctx.send(embed=embed, view=SelfRoleView())
 
 @bot.command()
@@ -464,7 +503,8 @@ async def unmute(ctx, member: discord.Member):
     await ctx.send(f"🔊 {member.mention} unmute.", delete_after=5)
     await send_sanction_log("Unmute", ctx.author, member, "Manual")
 
-# ================= EVENIMENTE WELCOME / LEFT =================
+# ================= EVENIMENTE =================
+
 @bot.event
 async def on_member_join(member):
     channel = bot.get_channel(WELCOME_CH_ID)
@@ -484,13 +524,11 @@ async def on_member_remove(member):
     channel = bot.get_channel(WELCOME_CH_ID)
     if not channel: return
     leave_msg = (f"👋 **{member.name}** ai părăsit serverul.\n"
-                f"Ne pare rău să te vedem plecând și îți dorim numai bine mai departe. ❄️✨\n"
-                f"Dacă vreodată vrei să revii, ușa noastră rămâne deschisă.")
+                f"Ne pare rău să te vedem plecând și îți dorim numai bine mai departe. ❄️✨")
     embed = discord.Embed(description=leave_msg, color=0x2b2d31)
     embed.set_thumbnail(url=member.display_avatar.url)
     await channel.send(embed=embed)
 
-# ================= RESTUL EVENIMENTELOR =================
 @bot.event
 async def on_voice_state_update(member, before, after):
     log_ch = bot.get_channel(LOG_CH_ID)
@@ -540,15 +578,15 @@ async def warns(ctx, member: discord.Member = None):
 
 @bot.command()
 async def comenzi(ctx):
-    if ctx.channel.id != STAFF_CMD_CHANNEL: return
-    await ctx.send(f"❌ Doar în <#{STAFF_CMD_CHANNEL}>", delete_after=6)
-    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user motiv\n**#unban** ID\n**#kick** @user motiv\n**#mute** @user 1h/30m/2d motiv\n**#unmute** @user\n**#warn** @user motiv\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#addrole** @user @rol\n**#removerole** @user @rol\n**#avatar** [@user]\n**#serverinfo**\n**#slow** secunde\n**#setup_ticket**\n**#setup_roles**\n**#setup_apply** (Recrutare)\n\n❗ Abuz = sancțiune!")
+    if ctx.channel.id != STAFF_CMD_CHANNEL: 
+        return await ctx.send(f"❌ Doar în <#{STAFF_CMD_CHANNEL}>", delete_after=6)
+    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user\n**#unban** ID\n**#kick** @user\n**#mute** @user 1h\n**#unmute** @user\n**#warn** @user\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#setup_ticket**\n**#setup_roles**\n**#setup_apply**")
     await ctx.send(embed=embed)
 
 @bot.command()
 async def avatar(ctx, member: discord.Member = None):
-    if ctx.channel.id != BOT_COMMANDS_CH: return
-    await ctx.send(f"❌ Doar în <#{BOT_COMMANDS_CH}>", delete_after=6)
+    if ctx.channel.id != BOT_COMMANDS_CH: 
+        return await ctx.send(f"❌ Doar în <#{BOT_COMMANDS_CH}>", delete_after=6)
     member = member or ctx.author
     embed = discord.Embed(title=f"Avatar • {member.name}", color=0x2b2d31)
     embed.set_image(url=member.display_avatar.url)
@@ -556,8 +594,8 @@ async def avatar(ctx, member: discord.Member = None):
 
 @bot.command()
 async def serverinfo(ctx):
-    if ctx.channel.id != BOT_COMMANDS_CH: return
-    await ctx.send(f"❌ Doar în <#{BOT_COMMANDS_CH}>", delete_after=6)
+    if ctx.channel.id != BOT_COMMANDS_CH: 
+        return await ctx.send(f"❌ Doar în <#{BOT_COMMANDS_CH}>", delete_after=6)
     g = ctx.guild
     embed = discord.Embed(title=f"{g.name} • Info", color=0x2b2d31)
     embed.set_thumbnail(url=g.icon.url if g.icon else None)
@@ -632,12 +670,13 @@ async def on_message(message):
 async def on_ready():
     print(f"✅ {bot.user} ONLINE")
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="https://discord.gg/S96dauCsH"))
+    
+    # Înregistrăm vederea pentru butoanele persistente (Tichete, Roluri, Apply)
     bot.add_view(TicketView())
     bot.add_view(CloseTicketView())
     bot.add_view(SelfRoleView())
-    bot.add_view(ApplyView()) # Am adăugat vederea persistentă pentru Apply
+    bot.add_view(ApplyView())
 
-    # --- LOGICA UPLOAD AUTOMAT COD ---
     channel = bot.get_channel(UPDATE_LOG_CH_ID)
     if channel:
         await channel.purge(limit=15)
@@ -647,7 +686,6 @@ async def on_ready():
             embed = discord.Embed(title=f"🚀 Versiunea {VERSION} este activă!", color=0x00ff00, timestamp=datetime.datetime.now(UTC))
             embed.add_field(name="📅 Data & Ora", value=current_time, inline=True)
             embed.add_field(name="📝 Ce s-a modificat:", value=CHANGES_LOG, inline=False)
-            embed.set_footer(text="Codul sursă a fost reîncărcat cu succes.")
             await channel.send(embed=embed)
             await channel.send(content="💾 **Codul sursă complet:**", file=discord.File(file_path))
 

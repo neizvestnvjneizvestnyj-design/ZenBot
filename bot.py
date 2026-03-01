@@ -82,13 +82,10 @@ BOOST_GIF = "https://media.tenor.com/7123Lof2_mEAAAAC/make-it-rain-money.gif"
 CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 
 # --- CHANGELOG AUTOMAT ---
-VERSION = "4.0"
+VERSION = "4.5"
 CHANGES_LOG = """
-✅ **Private Apply System**: Cererile de Staff deschid acum un canal privat (tip tichet).
-✅ **Enhanced Privacy**: Doar aplicantul și echipa Staff pot vedea cererea în desfășurare.
-✅ **Admin Controls**: Butoane de Accept/Respinge direct în canalul de apply.
-✅ **Reject System**: Butonul de reject pune automat rolul de respins.
-✅ **Backup**: Botul trimite acum fișierul bot.py în canalul de update-uri.
+✅ **Security Update**: Aplicantul poate vedea canalul de apply, dar butoanele sunt blocate pentru el.
+✅ **Admin Access**: Doar utilizatorii cu rol superior celui de Staff pot accepta/respinge.
 """
 
 XP_COOLDOWN = 8
@@ -200,12 +197,19 @@ class CloseTicketView(discord.ui.View):
         try: await interaction.channel.delete()
         except: pass
 
-# ================= SISTEM APPLY TIP TICHET =================
+# ================= SISTEM APPLY TIP TICHET (SECURIZAT) =================
 
 class ApplyActionView(discord.ui.View):
     def __init__(self, applicant_id: int):
         super().__init__(timeout=None)
         self.applicant_id = applicant_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        staff_role = interaction.guild.get_role(STAFF_ID)
+        if not staff_role or interaction.user.top_role.position <= staff_role.position:
+            await interaction.response.send_message("❌ Doar conducerea (roluri peste Staff) poate folosi aceste butoane!", ephemeral=True)
+            return False
+        return True
 
     @discord.ui.button(label="Acceptă (Trial)", style=discord.ButtonStyle.success, custom_id="apply_accept_btn")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -376,7 +380,7 @@ async def setup_ticket(ctx):
         "👑 ；**CONTACT OWNER**\n"
         "・probleme sau întrebări legate de grade (roluri) și promovări\n"
         "・semnalezi un bug, probleme cu un manager, urgențe\n"
-        "・alte probleme pe care staff-ul obișnuit nu le poate rezolva\n\n"
+        "・alte probleme pe care staff-ul obișnuuit nu le poate rezolva\n\n"
         "❓ ；**INFO & OTHERS**\n"
         "・alte întrebări legate de server, probleme care nu apar mai sus\n\n"
         "**📢 ；Crearea ticketelor în batjocură/glumă se pedepsește!**\n"
@@ -422,13 +426,6 @@ async def unban(ctx, id: int):
     await ctx.guild.unban(user)
     await ctx.send(f"✅ {user.name} a primit unban.", delete_after=5)
     await send_sanction_log("Unban", ctx.author, user)
-
-@bot.command()
-@is_staff_up()
-async def kick(ctx, member: discord.Member, *, reason="Nespecificat"):
-    await member.kick(reason=reason)
-    await ctx.send(f"✅ {member.name} a fost dat afară.", delete_after=5)
-    await send_sanction_log("Kick", ctx.author, member, reason)
 
 @bot.command()
 @is_staff_up()
@@ -681,7 +678,7 @@ async def on_ready():
     bot.add_view(CloseTicketView())
     bot.add_view(SelfRoleView())
     bot.add_view(ApplyView())
-    bot.add_view(ApplyActionView(0)) # Placeholder pentru butonul de accept/deny
+    bot.add_view(ApplyActionView(0)) # Placeholder
 
     channel = bot.get_channel(UPDATE_LOG_CH_ID)
     if channel:

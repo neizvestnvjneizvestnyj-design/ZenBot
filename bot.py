@@ -68,7 +68,9 @@ WELCOME_CH_ID = 1325279589915955321
 BOT_COMMANDS_CH = 1436559828859359373
 CHAT_CHANNEL_ID = 1436554745622827258
 STAFF_CMD_CHANNEL = 1449824932371632248
-UPDATE_LOG_CH_ID = 1477448913827921922 # Canalul de update cod
+UPDATE_LOG_CH_ID = 1477448913827921922 
+
+TICKET_CATEGORY_ID = 1444684157833056256 
 
 WARN1_ROLE_ID = 1436538867850416289
 W2_ID = 1436538789311811624
@@ -79,17 +81,81 @@ BOOST_GIF = "https://media.tenor.com/7123Lof2_mEAAAAC/make-it-rain-money.gif"
 CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 
 # --- CHANGELOG AUTOMAT ---
-VERSION = "2.0"
+VERSION = "2.2"
 CHANGES_LOG = """
-✅ **Sincronizare Cod**: Toate cerințele anterioare au fost comasate.
-✅ **Sistem de Versiuni**: Acum botul raportează automat v2.0.
-✅ **Auto-Upload Securizat**: La fiecare pornire, codul sursă `bot.py` este trimis pe canalul de update.
-✅ **Integritate**: Nu au fost modificate logica sancțiunilor sau ID-urile.
+✅ **Panou Ticket Custom**: Design-ul a fost actualizat conform cerințelor tale.
+✅ **Categorii Multiple**: Butoane separate pentru Report Staff, Member, Ban, Owner și Info.
+✅ **Identificare Rapidă**: Canalele de ticket au prefixe specifice categoriei alese.
+✅ **Persistență**: Butoanele rămân funcționale după restart-ul botului.
 """
 
 XP_COOLDOWN = 8
 last_xp_time = {}  
 
+# ================= CLASE PENTRU BUTOANE (TICKETS) =================
+class TicketView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    async def create_ticket(self, interaction: discord.Interaction, category_name: str):
+        guild = interaction.guild
+        staff_role = guild.get_role(STAFF_ID)
+        
+        channel_name = f"{category_name}-{interaction.user.name.lower()}"
+        existing_channel = discord.utils.get(guild.channels, name=channel_name)
+        
+        if existing_channel:
+            return await interaction.response.send_message(f"❌ Ai deja un ticket de acest tip deschis: {existing_channel.mention}", ephemeral=True)
+
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True, attach_files=True),
+            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        }
+        if staff_role:
+            overwrites[staff_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+
+        category = guild.get_channel(TICKET_CATEGORY_ID)
+        channel = await guild.create_text_channel(channel_name, overwrites=overwrites, category=category)
+        
+        embed = discord.Embed(
+            title=f"🎫 Ticket: {category_name.upper()}", 
+            description=f"Salut {interaction.user.mention}!\nAi deschis un ticket pentru: **{category_name.replace('-', ' ')}**.\nEchipa Staff va prelua cererea ta în cel mai scurt timp.\n\nFolosește butonul de mai jos pentru a închide tichetul.", 
+            color=0x2b2d31
+        )
+        await channel.send(embed=embed, view=CloseTicketView())
+        await interaction.response.send_message(f"✅ Ticket creat: {channel.mention}", ephemeral=True)
+
+    @discord.ui.button(label="REPORT STAFF", style=discord.ButtonStyle.secondary, custom_id="t_staff", emoji="<a:atentie:967197754575171625>")
+    async def t_staff(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.create_ticket(interaction, "staff")
+
+    @discord.ui.button(label="REPORT MEMBER", style=discord.ButtonStyle.secondary, custom_id="t_member", emoji="<:emoji_17:1183430537709367296>")
+    async def t_member(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.create_ticket(interaction, "member")
+
+    @discord.ui.button(label="BAN REPORTS", style=discord.ButtonStyle.secondary, custom_id="t_ban", emoji="<a:ban:967197753069428736>")
+    async def t_ban(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.create_ticket(interaction, "ban")
+
+    @discord.ui.button(label="CONTACT OWNER", style=discord.ButtonStyle.secondary, custom_id="t_owner", emoji="<:aleck_crown:1262036645813948527>")
+    async def t_owner(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.create_ticket(interaction, "owner")
+
+    @discord.ui.button(label="INFO & OTHERS", style=discord.ButtonStyle.secondary, custom_id="t_info", emoji="❓")
+    async def t_info(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.create_ticket(interaction, "info")
+
+class CloseTicketView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Închide Ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket", emoji="🔒")
+    async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("Tichetul se va închide în 5 secunde...")
+        await asyncio.sleep(5)
+        try: await interaction.channel.delete()
+        except: pass
 # ================= FUNCTIE ANUNT BOOST =================
 async def send_boost_announcement(member, guild):
     channel = bot.get_channel(BOOST_CH_ID)
@@ -142,6 +208,29 @@ def is_above_staff():
     return commands.check(pred)
 
 # ================= COMENZI =================
+
+@bot.command()
+@is_staff_up()
+async def setup_ticket(ctx):
+    await ctx.message.delete()
+    text_panou = (
+        "<a:atentie:967197754575171625> ；**REPORT STAFF**\n"
+        "・reclami un membru staff care face abuz sau încalcă regulamentul\n\n"
+        "<:emoji_17:1183430537709367296> ；**REPORT MEMBER**\n"
+        "・reclami un membru obișnuit care încalcă regulamentul nostru\n\n"
+        "<a:ban:967197753069428736> ；**BAN REPORTS**\n"
+        "・reclami un membru care arată content porno/gore sau face expose\n\n"
+        "<:aleck_crown:1262036645813948527> ；**CONTACT OWNER**\n"
+        "・probleme sau întrebări legate de grade (roluri) și promovări\n"
+        "・semnalezi un bug, probleme cu un manager, urgențe\n"
+        "・alte probleme pe care staff-ul obișnuit nu le poate rezolva\n\n"
+        "❓ ；**INFO & OTHERS**\n"
+        "・alte întrebări legate de server, probleme care nu apar mai sus\n\n"
+        "**<a:announce:966843654436179968> ；Crearea ticketelor în batjocură/glumă se pedepsește!**\n"
+        "**<a:announce:966843654436179968> ；Nu ai voie să partajezi conținutul ticketelor pe voice!**"
+    )
+    embed = discord.Embed(description=text_panou, color=0x2b2d31)
+    await ctx.send(embed=embed, view=TicketView())
 
 @bot.command()
 @is_staff_up()
@@ -343,7 +432,7 @@ async def warns(ctx, member: discord.Member = None):
 @bot.command()
 async def comenzi(ctx):
     if ctx.channel.id != STAFF_CMD_CHANNEL: return await ctx.send(f"❌ Doar în <#{STAFF_CMD_CHANNEL}>", delete_after=6)
-    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user motiv\n**#unban** ID\n**#kick** @user motiv\n**#mute** @user 1h/30m/2d motiv\n**#unmute** @user\n**#warn** @user motiv\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#addrole** @user @rol\n**#removerole** @user @rol\n**#avatar** [@user]\n**#serverinfo**\n**#slow** secunde\n\n❗ Abuz = sancțiune!")
+    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user motiv\n**#unban** ID\n**#kick** @user motiv\n**#mute** @user 1h/30m/2d motiv\n**#unmute** @user\n**#warn** @user motiv\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#addrole** @user @rol\n**#removerole** @user @rol\n**#avatar** [@user]\n**#serverinfo**\n**#slow** secunde\n**#setup_ticket**\n\n❗ Abuz = sancțiune!")
     await ctx.send(embed=embed)
 
 @bot.command()
@@ -426,6 +515,9 @@ async def on_message(message):
 async def on_ready():
     print(f"✅ {bot.user} ONLINE")
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="https://discord.gg/S96dauCsH"))
+    
+    bot.add_view(TicketView())
+    bot.add_view(CloseTicketView())
     
     # --- LOGICA UPLOAD AUTOMAT COD ---
     channel = bot.get_channel(UPDATE_LOG_CH_ID)

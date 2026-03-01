@@ -453,11 +453,17 @@ async def on_voice_state_update(member, before, after):
     log_ch = bot.get_channel(LOG_CH_ID)
     if not log_ch: return
     if before.channel is None and after.channel is not None:
-        emb = discord.Embed(title="📥 Voice Join", description=f"{member.mention} a intrat pe {after.channel.mention}", color=0x43b58
+        emb = discord.Embed(title="📥 Voice Join", description=f"{member.mention} a intrat pe {after.channel.mention}", color=0x43b581,        timestamp=datetime.datetime.now(UTC))
+        await log_ch.send(emb)
+    elif before.channel is not None and after.channel is None:
+        emb = discord.Embed(title="📤 Voice Leave", description=f"{member.mention} a ieșit de pe **{before.channel.name}**", color=0xf04747, timestamp=datetime.datetime.now(UTC))
+        await log_ch.send(emb)
+
 @bot.event
 async def on_message_delete(message):
     if message.author.bot: return
     log_ch = bot.get_channel(LOG_CH_ID)
+    # CORECPȚIE: Am eliminat linia duplicată 'if not log_ch = ...' care genera eroare
     if not log_ch: return
     emb = discord.Embed(title="🗑️ Mesaj Șters", color=0xff4500, timestamp=datetime.datetime.now(UTC))
     emb.add_field(name="Autor", value=message.author.mention)

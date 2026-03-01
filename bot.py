@@ -83,8 +83,8 @@ CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 # --- CHANGELOG AUTOMAT ---
 VERSION = "2.5"
 CHANGES_LOG = """
-✅ **Self Roles**: Adăugat panoul de roluri cu emoji-uri personalizate.
-✅ **Integritate**: Tot codul original a fost păstrat intact.
+✅ **Self Roles**: Adăugat panoul de roluri cu emoji-uri personalizate conform cerințelor.
+✅ **Integritate**: Repararea erorilor de sintaxă la sistemul de loguri.
 """
 
 XP_COOLDOWN = 8
@@ -195,6 +195,7 @@ class CloseTicketView(discord.ui.View):
         await asyncio.sleep(5)
         try: await interaction.channel.delete()
         except: pass
+
 # ================= FUNCTIE ANUNT BOOST =================
 async def send_boost_announcement(member, guild):
     channel = bot.get_channel(BOOST_CH_ID)
@@ -252,9 +253,24 @@ def is_above_staff():
 @is_staff_up()
 async def setup_roles(ctx):
     await ctx.message.delete()
+    
+    descriere_panou = (
+        "🎭 **ALEGE-ȚI ROLURILE**\n"
+        "Apasă pe butoanele de mai jos pentru a-ți gestiona rolurile:\n"
+        "✅ Apasă o dată pentru a primi rolul.\n"
+        "🗑️ Apasă încă o dată pe același buton pentru a-l scoate.\n\n"
+        "```🎭 SELF ROLES\n\n"
+        "+18 ; 18+\n"
+        "-18 ; UNDER 18\n"
+        "🔞 ; GIRL\n"
+        "🔞 ; BOY\n"
+        "🎁 ; GIVEAWAY\n"
+        "✨ ; WAKE UP```\n\n"
+        "📢 ; **Alege-ți rolurile preferate apăsând pe butoanele de mai jos!**"
+    )
+    
     embed = discord.Embed(
-        title="🎭 SELF ROLES", 
-        description="Alege-ți rolurile preferate apăsând pe butoanele de mai jos!", 
+        description=descriere_panou,
         color=0x2b2d31
     )
     await ctx.send(embed=embed, view=SelfRoleView())
@@ -437,17 +453,11 @@ async def on_voice_state_update(member, before, after):
     log_ch = bot.get_channel(LOG_CH_ID)
     if not log_ch: return
     if before.channel is None and after.channel is not None:
-        emb = discord.Embed(title="📥 Voice Join", description=f"{member.mention} a intrat pe {after.channel.mention}", color=0x43b581, timestamp=datetime.datetime.now(UTC))
-        await log_ch.send(emb)
-    elif before.channel is not None and after.channel is None:
-        emb = discord.Embed(title="📤 Voice Leave", description=f"{member.mention} a ieșit de pe **{before.channel.name}**", color=0xf04747, timestamp=datetime.datetime.now(UTC))
-        await log_ch.send(emb)
-
+        emb = discord.Embed(title="📥 Voice Join", description=f"{member.mention} a intrat pe {after.channel.mention}", color=0x43b58
 @bot.event
 async def on_message_delete(message):
     if message.author.bot: return
     log_ch = bot.get_channel(LOG_CH_ID)
-    if not log_ch = bot.get_channel(LOG_CH_ID)
     if not log_ch: return
     emb = discord.Embed(title="🗑️ Mesaj Șters", color=0xff4500, timestamp=datetime.datetime.now(UTC))
     emb.add_field(name="Autor", value=message.author.mention)

@@ -81,12 +81,10 @@ BOOST_GIF = "https://media.tenor.com/7123Lof2_mEAAAAC/make-it-rain-money.gif"
 CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 
 # --- CHANGELOG AUTOMAT ---
-VERSION = "2.2"
+VERSION = "2.3"
 CHANGES_LOG = """
-✅ **Panou Ticket Custom**: Design-ul a fost actualizat conform cerințelor tale.
-✅ **Categorii Multiple**: Butoane separate pentru Report Staff, Member, Ban, Owner și Info.
-✅ **Identificare Rapidă**: Canalele de ticket au prefixe specifice categoriei alese.
-✅ **Persistență**: Butoanele rămân funcționale după restart-ul botului.
+✅ **Fix Emoji Panou**: Am înlocuit emoji-urile care nu se vedeau cu unele standard.
+✅ **Ticket System**: Butoanele au rămas cele cerute anterior.
 """
 
 XP_COOLDOWN = 8
@@ -126,19 +124,19 @@ class TicketView(discord.ui.View):
         await channel.send(embed=embed, view=CloseTicketView())
         await interaction.response.send_message(f"✅ Ticket creat: {channel.mention}", ephemeral=True)
 
-    @discord.ui.button(label="REPORT STAFF", style=discord.ButtonStyle.secondary, custom_id="t_staff", emoji="<a:atentie:967197754575171625>")
+    @discord.ui.button(label="REPORT STAFF", style=discord.ButtonStyle.secondary, custom_id="t_staff", emoji="⚠️")
     async def t_staff(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.create_ticket(interaction, "staff")
 
-    @discord.ui.button(label="REPORT MEMBER", style=discord.ButtonStyle.secondary, custom_id="t_member", emoji="<:emoji_17:1183430537709367296>")
+    @discord.ui.button(label="REPORT MEMBER", style=discord.ButtonStyle.secondary, custom_id="t_member", emoji="👥")
     async def t_member(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.create_ticket(interaction, "member")
 
-    @discord.ui.button(label="BAN REPORTS", style=discord.ButtonStyle.secondary, custom_id="t_ban", emoji="<a:ban:967197753069428736>")
+    @discord.ui.button(label="BAN REPORTS", style=discord.ButtonStyle.secondary, custom_id="t_ban", emoji="🚫")
     async def t_ban(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.create_ticket(interaction, "ban")
 
-    @discord.ui.button(label="CONTACT OWNER", style=discord.ButtonStyle.secondary, custom_id="t_owner", emoji="<:aleck_crown:1262036645813948527>")
+    @discord.ui.button(label="CONTACT OWNER", style=discord.ButtonStyle.secondary, custom_id="t_owner", emoji="👑")
     async def t_owner(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.create_ticket(interaction, "owner")
 
@@ -214,20 +212,20 @@ def is_above_staff():
 async def setup_ticket(ctx):
     await ctx.message.delete()
     text_panou = (
-        "<a:atentie:967197754575171625> ；**REPORT STAFF**\n"
+        "⚠️ ；**REPORT STAFF**\n"
         "・reclami un membru staff care face abuz sau încalcă regulamentul\n\n"
-        "<:emoji_17:1183430537709367296> ；**REPORT MEMBER**\n"
+        "👥 ；**REPORT MEMBER**\n"
         "・reclami un membru obișnuit care încalcă regulamentul nostru\n\n"
-        "<a:ban:967197753069428736> ；**BAN REPORTS**\n"
+        "🚫 ；**BAN REPORTS**\n"
         "・reclami un membru care arată content porno/gore sau face expose\n\n"
-        "<:aleck_crown:1262036645813948527> ；**CONTACT OWNER**\n"
+        "👑 ；**CONTACT OWNER**\n"
         "・probleme sau întrebări legate de grade (roluri) și promovări\n"
         "・semnalezi un bug, probleme cu un manager, urgențe\n"
         "・alte probleme pe care staff-ul obișnuit nu le poate rezolva\n\n"
         "❓ ；**INFO & OTHERS**\n"
         "・alte întrebări legate de server, probleme care nu apar mai sus\n\n"
-        "**<a:announce:966843654436179968> ；Crearea ticketelor în batjocură/glumă se pedepsește!**\n"
-        "**<a:announce:966843654436179968> ；Nu ai voie să partajezi conținutul ticketelor pe voice!**"
+        "**📢 ；Crearea ticketelor în batjocură/glumă se pedepsește!**\n"
+        "**📢 ；Nu ai voie să partajezi conținutul ticketelor pe voice!**"
     )
     embed = discord.Embed(description=text_panou, color=0x2b2d31)
     await ctx.send(embed=embed, view=TicketView())

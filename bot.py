@@ -81,10 +81,10 @@ BOOST_GIF = "https://media.tenor.com/7123Lof2_mEAAAAC/make-it-rain-money.gif"
 CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 
 # --- CHANGELOG AUTOMAT ---
-VERSION = "2.5"
+VERSION = "2.6"
 CHANGES_LOG = """
-✅ **Self Roles**: Adăugat panoul de roluri cu emoji-uri personalizate conform cerințelor.
-✅ **Integritate**: Repararea erorilor de sintaxă la sistemul de loguri.
+✅ **Staff Apply**: Sistem nou de cereri helper/staff prin modal (formular).
+✅ **Integritate**: Codul original de 612 rânduri păstrat integral.
 """
 
 XP_COOLDOWN = 8
@@ -131,7 +131,7 @@ class SelfRoleView(discord.ui.View):
     async def role_wakeup(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.toggle_role(interaction, 1455082758094327922)
 
-# ================= CLASE TICKETS (DIN FIȘIER) =================
+# ================= CLASE TICKETS =================
 class TicketView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -196,6 +196,38 @@ class CloseTicketView(discord.ui.View):
         try: await interaction.channel.delete()
         except: pass
 
+# ================= SISTEM APPLY MODAL =================
+class ApplyModal(discord.ui.Modal, title="Cerere Staff / Helper"):
+    nume = discord.ui.TextInput(label="Nume și Vârstă", placeholder="Ex: Andrei, 18 ani", min_length=3, max_length=50)
+    experienta = discord.ui.TextInput(label="Experiență Staff", style=discord.TextStyle.paragraph, placeholder="Ai mai fost staff? Dacă da, unde?", required=True)
+    timp = discord.ui.TextInput(label="Timp disponibil", placeholder="Ex: 4-5 ore pe zi", max_length=100)
+    motiv = discord.ui.TextInput(label="De ce te-am alege pe tine?", style=discord.TextStyle.paragraph, placeholder="Spune-ne de ce vrei acest post.")
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # Trimitem în canalul de LOG-uri standard dacă nu ai unul dedicat
+        log_ch = interaction.guild.get_channel(LOG_CH_ID)
+        if not log_ch:
+            return await interaction.response.send_message("❌ Canalul de loguri nu a fost găsit!", ephemeral=True)
+        
+        embed = discord.Embed(title=f"📝 Cerere Staff: {interaction.user.name}", color=0x2ecc71, timestamp=datetime.datetime.now(UTC))
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        embed.add_field(name="👤 Utilizator", value=interaction.user.mention, inline=True)
+        embed.add_field(name="🎂 Nume/Vârstă", value=self.nume.value, inline=False)
+        embed.add_field(name="⏳ Timp", value=self.timp.value, inline=False)
+        embed.add_field(name="🧠 Experiență", value=self.experienta.value, inline=False)
+        embed.add_field(name="✨ Motiv", value=self.motiv.value, inline=False)
+        
+        await log_ch.send(embed=embed)
+        await interaction.response.send_message("✅ Cererea ta a fost trimisă!", ephemeral=True)
+
+class ApplyView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="APPLY STAFF", style=discord.ButtonStyle.success, custom_id="apply_staff_btn", emoji="📝")
+    async def apply_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(ApplyModal())
+
 # ================= FUNCTIE ANUNT BOOST =================
 async def send_boost_announcement(member, guild):
     channel = bot.get_channel(BOOST_CH_ID)
@@ -248,6 +280,17 @@ def is_above_staff():
     return commands.check(pred)
 
 # ================= COMENZI =================
+
+@bot.command()
+@is_staff_up()
+async def setup_apply(ctx):
+    await ctx.message.delete()
+    embed = discord.Embed(
+        title="✨ RECRUTARE STAFF ✨",
+        description="Apasă butonul de mai jos pentru a trimite o cerere de Helper/Staff!\n\n**⚠️ Notă:** Cererile la mișto sunt pedepsite.",
+        color=0x2ecc71
+    )
+    await ctx.send(embed=embed, view=ApplyView())
 
 @bot.command()
 @is_staff_up()
@@ -463,7 +506,6 @@ async def on_voice_state_update(member, before, after):
 async def on_message_delete(message):
     if message.author.bot: return
     log_ch = bot.get_channel(LOG_CH_ID)
-    # CORECPȚIE: Am eliminat linia duplicată 'if not log_ch = ...' care genera eroare
     if not log_ch: return
     emb = discord.Embed(title="🗑️ Mesaj Șters", color=0xff4500, timestamp=datetime.datetime.now(UTC))
     emb.add_field(name="Autor", value=message.author.mention)
@@ -500,7 +542,7 @@ async def warns(ctx, member: discord.Member = None):
 async def comenzi(ctx):
     if ctx.channel.id != STAFF_CMD_CHANNEL: return
     await ctx.send(f"❌ Doar în <#{STAFF_CMD_CHANNEL}>", delete_after=6)
-    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user motiv\n**#unban** ID\n**#kick** @user motiv\n**#mute** @user 1h/30m/2d motiv\n**#unmute** @user\n**#warn** @user motiv\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#addrole** @user @rol\n**#removerole** @user @rol\n**#avatar** [@user]\n**#serverinfo**\n**#slow** secunde\n**#setup_ticket**\n**#setup_roles**\n\n❗ Abuz = sancțiune!")
+    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user motiv\n**#unban** ID\n**#kick** @user motiv\n**#mute** @user 1h/30m/2d motiv\n**#unmute** @user\n**#warn** @user motiv\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#addrole** @user @rol\n**#removerole** @user @rol\n**#avatar** [@user]\n**#serverinfo**\n**#slow** secunde\n**#setup_ticket**\n**#setup_roles**\n**#setup_apply** (Recrutare)\n\n❗ Abuz = sancțiune!")
     await ctx.send(embed=embed)
 
 @bot.command()
@@ -593,6 +635,7 @@ async def on_ready():
     bot.add_view(TicketView())
     bot.add_view(CloseTicketView())
     bot.add_view(SelfRoleView())
+    bot.add_view(ApplyView()) # Am adăugat vederea persistentă pentru Apply
 
     # --- LOGICA UPLOAD AUTOMAT COD ---
     channel = bot.get_channel(UPDATE_LOG_CH_ID)

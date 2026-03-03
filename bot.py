@@ -83,10 +83,10 @@ BOOST_GIF = "https://media.tenor.com/7123Lof2_mEAAAAC/make-it-rain-money.gif"
 CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 
 # --- CHANGELOG AUTOMAT ---
-VERSION = "4.8"
+VERSION = "4.6"
 CHANGES_LOG = """
-✅ **Moderare**: #kick acum necesită Staff+, #vmute necesită Trial Helper+. Ambele trimit log în Mod-Logs.
-✅ **Social**: #hug și #slap pot fi folosite oriunde de către cei peste gradul Staff.
+✅ **Update Recrutare**: Titlul a fost schimbat în 'RECRUTARE HELPER'.
+✅ **Update Buton**: Eticheta butonului a fost actualizată la 'HELPER APPLY'.
 """
 
 XP_COOLDOWN = 8
@@ -422,49 +422,6 @@ async def ban(ctx, member: discord.Member, *, reason="Nespecificat"):
 
 @bot.command()
 @is_staff_up()
-async def kick(ctx, member: discord.Member, *, reason="Nespecificat"):
-    await member.kick(reason=reason)
-    await ctx.send(f"👢 {member.name} a fost dat afară.", delete_after=5)
-    await send_sanction_log("Kick", ctx.author, member, reason)
-
-@bot.command()
-@is_trial_up()
-async def vmute(ctx, member: discord.Member, *, reason="Nespecificat")
-if not member.voice: return await ctx.send("❌ Membrul nu este pe voice!")
-    await member.edit(mute=True, reason=reason)
-    await ctx.send(f"🔇 {member.mention} a primit mute pe voce.", delete_after=5)
-    await send_sanction_log("Voice Mute", ctx.author, member, reason)
-
-@bot.command()
-async def hug(ctx, member: discord.Member):
-    # Verificare permisiune: Peste Staff (pozitie strict mai mare decat STAFF_ID)
-    staff_role = ctx.guild.get_role(STAFF_ID)
-    is_high_staff = staff_role and ctx.author.top_role.position > staff_role.position
-    
-    if not is_high_staff and ctx.channel.id != BOT_COMMANDS_CH:
-        return await ctx.send(f"❌ Doar în <#{BOT_COMMANDS_CH}>", delete_after=5)
-        
-    gifs = ["https://media.tenor.com/kCZjHreW6GAAAAAC/warm-hug-anime-hug.gif", "https://media.tenor.com/jQ0vYvY3vWwAAAAC/anime-hug.gif"]
-    emb = discord.Embed(description=f"🤗 {ctx.author.mention} îi oferă o îmbrățișare lui {member.mention}!", color=0xff69b4)
-    emb.set_image(url=random.choice(gifs))
-    await ctx.send(embed=emb)
-
-@bot.command()
-async def slap(ctx, member: discord.Member):
-    # Verificare permisiune: Peste Staff (pozitie strict mai mare decat STAFF_ID)
-    staff_role = ctx.guild.get_role(STAFF_ID)
-    is_high_staff = staff_role and ctx.author.top_role.position > staff_role.position
-    
-    if not is_high_staff and ctx.channel.id != BOT_COMMANDS_CH:
-        return await ctx.send(f"❌ Doar în <#{BOT_COMMANDS_CH}>", delete_after=5)
-        
-    gifs = ["https://media.tenor.com/Ws6_2CB_YGsAAAAC/anime-slap.gif", "https://media.tenor.com/XiYuU9vM6rAAAAAC/anime-slap-mad.gif"]
-    emb = discord.Embed(description=f"💢 {ctx.author.mention} i-a tras o palmă lui {member.mention}!", color=0xff0000)
-    emb.set_image(url=random.choice(gifs))
-    await ctx.send(embed=emb)
-
-@bot.command()
-@is_staff_up()
 async def unban(ctx, id: int):
     user = await bot.fetch_user(id)
     await ctx.guild.unban(user)
@@ -626,7 +583,7 @@ async def warns(ctx, member: discord.Member = None):
 async def comenzi(ctx):
     if ctx.channel.id != STAFF_CMD_CHANNEL: 
         return await ctx.send(f"❌ Doar în <#{STAFF_CMD_CHANNEL}>", delete_after=6)
-    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user\n**#unban** ID\n**#kick** @user\n**#mute** @user 1h\n**#vmute** @user\n**#unmute** @user\n**#warn** @user\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#setup_ticket**\n**#setup_roles**\n**#setup_apply**\n\n✨ **FUN:** #hug, #slap")
+    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user\n**#unban** ID\n**#mute** @user 1h\n**#unmute** @user\n**#warn** @user\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#setup_ticket**\n**#setup_roles**\n**#setup_apply**")
     await ctx.send(embed=embed)
 
 @bot.command()

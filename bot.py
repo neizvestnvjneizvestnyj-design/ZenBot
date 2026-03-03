@@ -7,6 +7,7 @@ from discord.ext import commands
 import asyncio
 import datetime
 import json
+import random
 from datetime import UTC, timedelta
 import time  # pentru cooldown XP
 from flask import Flask
@@ -82,10 +83,12 @@ BOOST_GIF = "https://media.tenor.com/7123Lof2_mEAAAAC/make-it-rain-money.gif"
 CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 
 # --- CHANGELOG AUTOMAT ---
-VERSION = "4.6"
+VERSION = "4.7"
 CHANGES_LOG = """
 ✅ **Update Recrutare**: Titlul a fost schimbat în 'RECRUTARE HELPER'.
 ✅ **Update Buton**: Eticheta butonului a fost actualizată la 'HELPER APPLY'.
+✅ **Moderare**: Adăugate comenzile #kick și #vmute.
+✅ **Social**: Adăugate comenzile #hug și #slap (doar pe canal bot).
 """
 
 XP_COOLDOWN = 8
@@ -374,9 +377,9 @@ async def setup_ticket(ctx):
         "⚠️ ；**REPORT STAFF**\n"
         "・reclami un membru staff care face abuz sau încalcă regulamentul\n\n"
         "👥 ；**REPORT MEMBER**\n"
-        "・reclami un membru obișnuit care încalcă regulamentul nostru\n\n"
+        "・reclami un membru obișuuit care încalcă regulamentul nostru\n\n"
         "🚫 ；**BAN REPORTS**\n"
-        "・reclami un membru care arată content porno/gore sau face expose\n\n"
+        "・reclami un membru care arată conținut porno/gore sau face expose\n\n"
         "👑 ；**CONTACT OWNER**\n"
         "・probleme sau întrebări legate de grade (roluri) și promovări\n"
         "・semnalezi un bug, probleme cu un manager, urgențe\n"
@@ -418,6 +421,39 @@ async def ban(ctx, member: discord.Member, *, reason="Nespecificat"):
     await member.ban(reason=reason)
     await ctx.send(f"✅ {member.name} a fost banat.", delete_after=5)
     await send_sanction_log("Ban", ctx.author, member, reason)
+
+@bot.command()
+@is_staff_up()
+async def kick(ctx, member: discord.Member, *, reason="Nespecificat"):
+    await member.kick(reason=reason)
+    await ctx.send(f"👢 {member.name} a fost dat afară.", delete_after=5)
+    await send_sanction_log("Kick", ctx.author, member, reason)
+
+@bot.command()
+@is_trial_up()
+async def vmute(ctx, member: discord.Member, *, reason="Nespecificat"):
+    if not member.voice: return await ctx.send("❌ Membrul nu este pe voice!")
+    await member.edit(mute=True, reason=reason)
+    await ctx.send(f"🔇 {member.mention} a primit mute pe voce.")
+    await send_sanction_log("Voice Mute", ctx.author, member, reason)
+
+@bot.command()
+async def hug(ctx, member: discord.Member):
+    if ctx.channel.id != BOT_COMMANDS_CH:
+        return await ctx.send(f"❌ Folosește <#{BOT_COMMANDS_CH}>", delete_after=5)
+    gifs = ["https://media.tenor.com/kCZjHreW6GAAAAAC/warm-hug-anime-hug.gif", "https://media.tenor.com/jQ0vYvY3vWwAAAAC/anime-hug.gif"]
+    emb = discord.Embed(description=f"🤗 {ctx.author.mention} îi oferă o îmbrățișare lui {member.mention}!", color=0xff69b4)
+    emb.set_image(url=random.choice(gifs))
+    await ctx.send(embed=emb)
+
+@bot.command()
+async def slap(ctx, member: discord.Member):
+    if ctx.channel.id != BOT_COMMANDS_CH:
+        return await ctx.send(f"❌ Folosește <#{BOT_COMMANDS_CH}>", delete_after=5)
+    gifs = ["https://media.tenor.com/Ws6_2CB_YGsAAAAC/anime-slap.gif", "https://media.tenor.com/XiYuU9vM6rAAAAAC/anime-slap-mad.gif"]
+    emb = discord.Embed(description=f"💢 {ctx.author.mention} i-a tras o palmă lui {member.mention}!", color=0xff0000)
+    emb.set_image(url=random.choice(gifs))
+    await ctx.send(embed=emb)
 
 @bot.command()
 @is_staff_up()
@@ -582,7 +618,7 @@ async def warns(ctx, member: discord.Member = None):
 async def comenzi(ctx):
     if ctx.channel.id != STAFF_CMD_CHANNEL: 
         return await ctx.send(f"❌ Doar în <#{STAFF_CMD_CHANNEL}>", delete_after=6)
-    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user\n**#unban** ID\n**#kick** @user\n**#mute** @user 1h\n**#unmute** @user\n**#warn** @user\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#setup_ticket**\n**#setup_roles**\n**#setup_apply**")
+    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user\n**#unban** ID\n**#kick** @user\n**#mute** @user 1h\n**#vmute** @user\n**#unmute** @user\n**#warn** @user\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#setup_ticket**\n**#setup_roles**\n**#setup_apply**\n\n✨ **FUN:** #hug, #slap")
     await ctx.send(embed=embed)
 
 @bot.command()

@@ -276,7 +276,7 @@ class ApplyView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="APPLY STAFF", style=discord.ButtonStyle.success, custom_id="main_apply_btn", emoji="📝")
+    @discord.ui.button(label="HELPER APPLY", style=discord.ButtonStyle.success, custom_id="main_apply_btn", emoji="📝")
     async def apply_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(ApplyModal())
 
@@ -376,11 +376,11 @@ async def setup_ticket(ctx):
         "👥 ；**REPORT MEMBER**\n"
         "・reclami un membru obișnuuit care încalcă regulamentul nostru\n\n"
         "🚫 ；**BAN REPORTS**\n"
-        "・reclami un membru care arată content porno/gore sau face expose\n\n"
+        "・reclami un membru care arată conținut porno/gore sau face expose\n\n"
         "👑 ；**CONTACT OWNER**\n"
         "・probleme sau întrebări legate de grade (roluri) și promovări\n"
         "・semnalezi un bug, probleme cu un manager, urgențe\n"
-        "・alte probleme pe care staff-ul obișnuuit nu le poate rezolva\n\n"
+        "・alte probleme pe care staff-ul obișnuit nu le poate rezolva\n\n"
         "❓ ；**INFO & OTHERS**\n"
         "・alte întrebări legate de server, probleme care nu apar mai sus\n\n"
         "**📢 ；Crearea ticketelor în batjocură/glumă se pedepsește!**\n"

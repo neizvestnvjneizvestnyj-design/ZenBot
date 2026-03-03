@@ -56,7 +56,7 @@ bot = commands.Bot(command_prefix="#", intents=intents)
 # ================= ID-URI ACTUALIZATE =================
 TRIAL_ID = 1444684277110542368
 STAFF_ID = 1325279044396126261
-REJECT_ROLE_ID = 1477702698936701019  # ID-ul pentru reject role adăugat
+REJECT_ROLE_ID = 1477702698936701019
 BOOST_ROLE_MIN = 1411137733975347293  
 BOOST_CH_ID = 1476419627482611762      
 BENEFITS_CH_ID = 1476425405304012843   
@@ -82,10 +82,10 @@ BOOST_GIF = "https://media.tenor.com/7123Lof2_mEAAAAC/make-it-rain-money.gif"
 CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 
 # --- CHANGELOG AUTOMAT ---
-VERSION = "4.5"
+VERSION = "4.6"
 CHANGES_LOG = """
-✅ **Security Update**: Aplicantul poate vedea canalul de apply, dar butoanele sunt blocate pentru el.
-✅ **Admin Access**: Doar utilizatorii cu rol superior celui de Staff pot accepta/respinge.
+✅ **Update Recrutare**: Titlul a fost schimbat în 'RECRUTARE HELPER'.
+✅ **Update Buton**: Eticheta butonului a fost actualizată la 'HELPER APPLY'.
 """
 
 XP_COOLDOWN = 8
@@ -197,7 +197,7 @@ class CloseTicketView(discord.ui.View):
         try: await interaction.channel.delete()
         except: pass
 
-# ================= SISTEM APPLY TIP TICHET (SECURIZAT) =================
+# ================= SISTEM APPLY TIP TICHET =================
 
 class ApplyActionView(discord.ui.View):
     def __init__(self, applicant_id: int):
@@ -207,7 +207,7 @@ class ApplyActionView(discord.ui.View):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         staff_role = interaction.guild.get_role(STAFF_ID)
         if not staff_role or interaction.user.top_role.position <= staff_role.position:
-            await interaction.response.send_message("❌ Doar conducerea (roluri peste Staff) poate folosi aceste butoane!", ephemeral=True)
+            await interaction.response.send_message("❌ Doar conducerea poate folosi aceste butoane!", ephemeral=True)
             return False
         return True
 
@@ -219,7 +219,7 @@ class ApplyActionView(discord.ui.View):
         
         if member and role_trial:
             await member.add_roles(role_trial)
-            try: await member.send(f"🎉 Cererea ta de Staff pe **{guild.name}** a fost acceptată! Bine ai venit.")
+            try: await member.send(f"🎉 Cererea ta de Helper pe **{guild.name}** a fost acceptată! Bine ai venit.")
             except: pass
             await interaction.response.send_message(f"✅ {member.mention} a primit gradul de Trial. Canalul se va închide în 10 secunde.")
             await asyncio.sleep(10)
@@ -236,13 +236,13 @@ class ApplyActionView(discord.ui.View):
         if member:
             if role_reject:
                 await member.add_roles(role_reject)
-            try: await member.send(f"❌ Cererea ta de Staff pe **{interaction.guild.name}** a fost respinsă.")
+            try: await member.send(f"❌ Cererea ta de Helper pe **{interaction.guild.name}** a fost respinsă.")
             except: pass
-        await interaction.response.send_message("🚫 Cerere respinsă. Utilizatorul a primit rolul de reject. Canalul se va închide în 5 secunde.")
+        await interaction.response.send_message("🚫 Cerere respinsă. Canalul se va închide în 5 secunde.")
         await asyncio.sleep(5)
         await interaction.channel.delete()
 
-class ApplyModal(discord.ui.Modal, title="Formular Aplicare Staff"):
+class ApplyModal(discord.ui.Modal, title="Formular Aplicare Helper"):
     nume = discord.ui.TextInput(label="Nume și Vârstă", placeholder="Ex: Andrei, 19 ani", min_length=3)
     experienta = discord.ui.TextInput(label="Experiență", style=discord.TextStyle.paragraph, placeholder="Unde ai mai fost Staff?")
     motiv = discord.ui.TextInput(label="De ce tu?", style=discord.TextStyle.paragraph, placeholder="Cu ce poți ajuta comunitatea?")
@@ -262,7 +262,7 @@ class ApplyModal(discord.ui.Modal, title="Formular Aplicare Staff"):
         category = guild.get_channel(TICKET_CATEGORY_ID)
         channel = await guild.create_text_channel(f"apply-{interaction.user.name}", category=category, overwrites=overwrites)
         
-        embed = discord.Embed(title=f"📝 Cerere Staff: {interaction.user.name}", color=0x3498db, timestamp=datetime.datetime.now(UTC))
+        embed = discord.Embed(title=f"📝 Cerere Helper: {interaction.user.name}", color=0x3498db, timestamp=datetime.datetime.now(UTC))
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
         embed.add_field(name="👤 Aplicant", value=interaction.user.mention)
         embed.add_field(name="🎂 Nume/Vârstă", value=self.nume.value, inline=False)
@@ -610,7 +610,6 @@ async def serverinfo(ctx):
 async def on_message(message):
     if message.author.bot or not message.guild: return
 
-    # --- AUTO-DELETE COMENZI ---
     if message.content.startswith("#"):
         async def delete_msg():
             await asyncio.sleep(10)
@@ -671,14 +670,13 @@ async def on_message(message):
 @bot.event
 async def on_ready():
     print(f"✅ {bot.user} ONLINE")
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Tickets & Apply"))
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Tickets & Helper Apply"))
     
-    # Înregistrăm vederile pentru butoanele persistente
     bot.add_view(TicketView())
     bot.add_view(CloseTicketView())
     bot.add_view(SelfRoleView())
     bot.add_view(ApplyView())
-    bot.add_view(ApplyActionView(0)) # Placeholder
+    bot.add_view(ApplyActionView(0))
 
     channel = bot.get_channel(UPDATE_LOG_CH_ID)
     if channel:
@@ -688,7 +686,6 @@ async def on_ready():
         embed.add_field(name="📅 Data & Ora", value=current_time, inline=True)
         embed.add_field(name="📝 Ce s-a modificat:", value=CHANGES_LOG, inline=False)
         
-        # --- BACKUP FIZIC BOT.PY ---
         file_path = "bot.py"
         if os.path.exists(file_path):
             await channel.send(embed=embed, file=discord.File(file_path))

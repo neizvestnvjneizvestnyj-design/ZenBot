@@ -339,7 +339,7 @@ def is_above_staff():
 async def setup_apply(ctx):
     await ctx.message.delete()
     embed = discord.Embed(
-        title="✨ RECRUTARE STAFF ✨",
+        title="✨ RECRUTARE HELPER ✨",
         description="Vrei să te alături echipei noastre? Apasă butonul de mai jos!\n\nSe va deschide un **canal privat** unde vei completa formularul.",
         color=0x2ecc71
     )

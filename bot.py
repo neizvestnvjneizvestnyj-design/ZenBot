@@ -83,16 +83,16 @@ BOOST_GIF = "https://media.tenor.com/7123Lof2_mEAAAAC/make-it-rain-money.gif"
 CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 
 # --- CHANGELOG AUTOMAT ---
-VERSION = "4.6"
+VERSION = "4.7"
 CHANGES_LOG = """
-✅ **Update Recrutare**: Titlul a fost schimbat în 'RECRUTARE HELPER'.
-✅ **Update Buton**: Eticheta butonului a fost actualizată la 'HELPER APPLY'.
+✅ **Comenzi noi**: Adăugate comenzile `#kick` și `#vmute`.
+✅ **Permisiuni**: Kick este pentru Staff+, Vmute este pentru Trial+.
 """
 
 XP_COOLDOWN = 8
 last_xp_time = {}  
 
-# ================= CLASE UI PERSISTENTE (TICHETE & ROLURI) =================
+# ================= CLASE UI PERSISTENTE =================
 
 class SelfRoleView(discord.ui.View):
     def __init__(self):
@@ -198,7 +198,7 @@ class CloseTicketView(discord.ui.View):
         try: await interaction.channel.delete()
         except: pass
 
-# ================= SISTEM APPLY TIP TICHET =================
+# ================= SISTEM APPLY =================
 
 class ApplyActionView(discord.ui.View):
     def __init__(self, applicant_id: int):
@@ -281,7 +281,7 @@ class ApplyView(discord.ui.View):
     async def apply_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(ApplyModal())
 
-# ================= FUNCȚII AJUTĂTOARE (LOGS & BOOST) =================
+# ================= FUNCȚII AJUTĂTOARE =================
 
 async def send_boost_announcement(member, guild):
     channel = bot.get_channel(BOOST_CH_ID)
@@ -299,7 +299,7 @@ async def send_boost_announcement(member, guild):
 async def send_sanction_log(action, staff, member, reason="Nespecificat", duration=None):
     act_low = action.lower()
     if "ban" in act_low: target_ch_id = BAN_LOG_CH_ID
-    elif any(x in act_low for x in ["mute", "kick", "warn", "unmute", "unwarn", "lock", "unlock", "slow"]):
+    elif any(x in act_low for x in ["mute", "kick", "warn", "unmute", "unwarn", "lock", "unlock", "slow", "vmute"]):
         target_ch_id = MOD_LOG_CH_ID
     else: target_ch_id = LOG_CH_ID
     channel = bot.get_channel(target_ch_id)
@@ -334,6 +334,33 @@ def is_above_staff():
     return commands.check(pred)
 
 # ================= COMENZI =================
+
+@bot.command()
+@is_staff_up()
+async def kick(ctx, member: discord.Member, *, reason="Nespecificat"):
+    if member.top_role >= ctx.author.top_role:
+        return await ctx.send("❌ Nu poți da kick cuiva cu grad egal sau mai mare!", delete_after=5)
+    await member.kick(reason=reason)
+    await ctx.send(f"✅ {member.name} a primit kick.", delete_after=5)
+    await send_sanction_log("Kick", ctx.author, member, reason)
+
+@bot.command()
+@is_trial_up()
+async def vmute(ctx, member: discord.Member, *, reason="Nespecificat"):
+    if not member.voice:
+        return await ctx.send("❌ Membrul nu este pe un canal voice!", delete_after=5)
+    await member.edit(mute=True, reason=reason)
+    await ctx.send(f"🔇 {member.mention} a primit mute pe voice.", delete_after=5)
+    await send_sanction_log("Voice Mute", ctx.author, member, reason)
+
+@bot.command()
+@is_trial_up()
+async def vunmute(ctx, member: discord.Member):
+    if not member.voice:
+        return await ctx.send("❌ Membrul nu este pe un canal voice!", delete_after=5)
+    await member.edit(mute=False)
+    await ctx.send(f"🔊 {member.mention} a primit unmute pe voice.", delete_after=5)
+    await send_sanction_log("Voice Unmute", ctx.author, member, "Manual")
 
 @bot.command()
 @is_staff_up()
@@ -416,6 +443,8 @@ async def slow(ctx, seconds: int):
 @bot.command()
 @is_staff_up()
 async def ban(ctx, member: discord.Member, *, reason="Nespecificat"):
+    if member.top_role >= ctx.author.top_role:
+        return await ctx.send("❌ Nu poți bana pe cineva cu grad egal sau mai mare!", delete_after=5)
     await member.ban(reason=reason)
     await ctx.send(f"✅ {member.name} a fost banat.", delete_after=5)
     await send_sanction_log("Ban", ctx.author, member, reason)
@@ -583,7 +612,7 @@ async def warns(ctx, member: discord.Member = None):
 async def comenzi(ctx):
     if ctx.channel.id != STAFF_CMD_CHANNEL: 
         return await ctx.send(f"❌ Doar în <#{STAFF_CMD_CHANNEL}>", delete_after=6)
-    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user\n**#unban** ID\n**#mute** @user 1h\n**#unmute** @user\n**#warn** @user\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#setup_ticket**\n**#setup_roles**\n**#setup_apply**")
+    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user\n**#kick** @user\n**#mute** @user 1h\n**#vmute** @user\n**#unban** ID\n**#unmute** @user\n**#warn** @user\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#setup_ticket**\n**#setup_roles**\n**#setup_apply**")
     await ctx.send(embed=embed)
 
 @bot.command()

@@ -1,4 +1,4 @@
-limport os
+import os
 from dotenv import load_dotenv  
 load_dotenv()                   
 
@@ -37,8 +37,7 @@ if not TOKEN:
 def load_data():
     if not os.path.exists("data.json"):
         with open("data.json", "w") as f:
-            # Am adăugat "economy" în structura de bază
-            json.dump({"warnings": {}, "levels": {}, "economy": {}}, f)
+            json.dump({"warnings": {}, "levels": {}}, f)
     with open("data.json") as f:
         return json.load(f)
 
@@ -82,68 +81,16 @@ W3_ID = 1450009480417902796
 MY_GIF = "https://media.discordapp.net/attachments/1440112412266205194/1461843437694484684/f63ce9f5-d6b6-47d9-91f0-eb1e166ab02a.gif"
 BOOST_GIF = "https://media.tenor.com/7123Lof2_mEAAAAC/make-it-rain-money.gif"
 CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
-CASH_EMOJI = "🟢" # Emoji-ul folosit în poza ta
 
 # --- CHANGELOG AUTOMAT ---
-VERSION = "5.0"
+VERSION = "4.7"
 CHANGES_LOG = """
-✅ **Economie**: Sistem Zen Cash adăugat (#balance, #work, #transfer).
-✅ **Securitate**: Botul este acum privat și părăsește serverele străine.
+✅ **Comenzi noi**: Adăugate comenzile `#kick` și `#vmute`.
+✅ **Permisiuni**: Kick este pentru Staff+, Vmute este pentru Trial+.
 """
 
-# ================= SISTEM ECONOMIE (ZEN CASH) =================
-
-def get_balance(user_id):
-    data = load_data()
-    if "economy" not in data: data["economy"] = {}
-    return data["economy"].get(str(user_id), 0)
-
-def update_balance(user_id, amount):
-    data = load_data()
-    if "economy" not in data: data["economy"] = {}
-    uid = str(user_id)
-    data["economy"][uid] = data["economy"].get(uid, 0) + amount
-    save_data(data)
-
-@bot.command(name="balance", aliases=["bal", "cash"])
-async def balance(ctx, member: discord.Member = None):
-    member = member or ctx.author
-    cash = get_balance(member.id)
-    embed = discord.Embed(title=f"Portofel • {member.name}", color=0x2b2d31)
-    embed.add_field(name="Zen Cash", value=f"{CASH_EMOJI} **{cash:,}**")
-    await ctx.send(embed=embed)
-
-@bot.command()
-@commands.cooldown(1, 3600, commands.BucketType.user) # O dată pe oră
-async def work(ctx):
-    gain = random.randint(100, 500)
-    update_balance(ctx.author.id, gain)
-    await ctx.send(f"💼 Ai muncit și ai câștigat **{gain}** Zen Cash!")
-
-@bot.command()
-async def transfer(ctx, member: discord.Member, amount: int):
-    if amount <= 0:
-        return await ctx.send("❌ Suma trebuie să fie pozitivă!")
-    
-    author_bal = get_balance(ctx.author.id)
-    if author_bal < amount:
-        return await ctx.send("❌ Nu ai destul Zen Cash pentru acest transfer!")
-
-    update_balance(ctx.author.id, -amount)
-    update_balance(member.id, amount)
-
-    # Embed-ul stilizat exact ca în poza ta
-    embed = discord.Embed(color=0x2b2d31)
-    embed.set_author(name=f"// Transferul a fost efectuat!", icon_url="https://cdn-icons-png.flaticon.com/512/615/615075.png")
-    embed.description = (
-        f"\n"
-        f"➡️ Ai transferat **{amount:,}** zen cash către {member.mention}.\n\n"
-        f"➡️ Ți-a mai rămas **{get_balance(ctx.author.id):,}** zen cash.\n\n"
-        f"➡️ {member.mention} are acum **{get_balance(member.id):,}** zen cash."
-    )
-    embed.set_thumbnail(url="https://media.discordapp.net/attachments/1110231542472421426/1110231580221153370/money-bag.png") # Iconiță bani ca în poză
-    
-    await ctx.send(content=f"{CASH_EMOJI} // Transfer reușit!", embed=embed)
+XP_COOLDOWN = 8
+last_xp_time = {}  
 
 # ================= CLASE UI PERSISTENTE =================
 
@@ -591,14 +538,6 @@ async def unmute(ctx, member: discord.Member):
 # ================= EVENIMENTE =================
 
 @bot.event
-async def on_guild_join(guild):
-    # Protecție: Iese automat de pe servere străine
-    ALLOWED_GUILD_ID = 1325278457017270313 # Serverul tău Zen
-    if guild.id != ALLOWED_GUILD_ID:
-        print(f"⚠️ Părăsesc serverul neautorizat: {guild.name}")
-        await guild.leave()
-
-@bot.event
 async def on_member_join(member):
     channel = bot.get_channel(WELCOME_CH_ID)
     if not channel: return
@@ -673,7 +612,7 @@ async def warns(ctx, member: discord.Member = None):
 async def comenzi(ctx):
     if ctx.channel.id != STAFF_CMD_CHANNEL: 
         return await ctx.send(f"❌ Doar în <#{STAFF_CMD_CHANNEL}>", delete_after=6)
-    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user\n**#kick** @user\n**#mute** @user 1h\n**#vmute** @user\n**#unban** ID\n**#unmute** @user\n**#warn** @user\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#balance**\n**#transfer** @user suma\n**#setup_ticket**\n**#setup_roles**\n**#setup_apply**")
+    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user\n**#kick** @user\n**#mute** @user 1h\n**#vmute** @user\n**#unban** ID\n**#unmute** @user\n**#warn** @user\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#setup_ticket**\n**#setup_roles**\n**#setup_apply**")
     await ctx.send(embed=embed)
 
 @bot.command()
@@ -761,7 +700,7 @@ async def on_message(message):
 @bot.event
 async def on_ready():
     print(f"✅ {bot.user} ONLINE")
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Tickets & Zen Cash"))
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Tickets & Helper Apply"))
     
     bot.add_view(TicketView())
     bot.add_view(CloseTicketView())

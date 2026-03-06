@@ -83,10 +83,10 @@ BOOST_GIF = "https://media.tenor.com/7123Lof2_mEAAAAC/make-it-rain-money.gif"
 CUSTOM_EMOJI = "<:emoji_16:1448074879961268451>"
 
 # --- CHANGELOG AUTOMAT ---
-VERSION = "4.7"
+VERSION = "4.8"
 CHANGES_LOG = """
-✅ **Comenzi noi**: Adăugate comenzile `#kick` și `#vmute`.
-✅ **Permisiuni**: Kick este pentru Staff+, Vmute este pentru Trial+.
+✅ **Update Ban**: Acum poți bana prin ID (`#ban 1234567890`) chiar dacă userul nu e pe server.
+✅ **Stabilitate**: Codul de bază a rămas neschimbat.
 """
 
 XP_COOLDOWN = 8
@@ -304,9 +304,14 @@ async def send_sanction_log(action, staff, member, reason="Nespecificat", durati
     else: target_ch_id = LOG_CH_ID
     channel = bot.get_channel(target_ch_id)
     if not channel: return
-    embed = discord.Embed(title=f"⛔ {action} | {member.name if hasattr(member, 'name') else str(member)}", color=0x2b2d31, timestamp=datetime.datetime.now(UTC))
+    
+    # Gestionare caz ID (User object sau Member object)
+    name = member.name if hasattr(member, 'name') else str(member)
+    mention = member.mention if hasattr(member, 'mention') else f"ID: {member.id}"
+    
+    embed = discord.Embed(title=f"⛔ {action} | {name}", color=0x2b2d31, timestamp=datetime.datetime.now(UTC))
     embed.set_thumbnail(url=MY_GIF)
-    embed.add_field(name="👤 User", value=member.mention if hasattr(member, 'mention') else str(member), inline=True)
+    embed.add_field(name="👤 User", value=mention, inline=True)
     embed.add_field(name="🛡️ Staff", value=staff.mention if staff else "@Sistem Automat", inline=True)
     embed.add_field(name="📄 Motiv", value=reason if reason else "Nespecificat", inline=True)
     if duration: embed.add_field(name="⏳ Detalii", value=duration, inline=True)
@@ -440,14 +445,32 @@ async def slow(ctx, seconds: int):
     await ctx.send(f"⏳ Slowmode setat la **{seconds}** secunde.", delete_after=5)
     await send_sanction_log("Slowmode", ctx.author, ctx.channel, f"Delay: {seconds}s")
 
+# ================= COMANDA BAN ACTUALIZATĂ (MEMBER SAU ID) =================
 @bot.command()
 @is_staff_up()
-async def ban(ctx, member: discord.Member, *, reason="Nespecificat"):
-    if member.top_role >= ctx.author.top_role:
-        return await ctx.send("❌ Nu poți bana pe cineva cu grad egal sau mai mare!", delete_after=5)
-    await member.ban(reason=reason)
-    await ctx.send(f"✅ {member.name} a fost banat.", delete_after=5)
-    await send_sanction_log("Ban", ctx.author, member, reason)
+async def ban(ctx, target: str, *, reason="Nespecificat"):
+    # Încercăm să convertim în membru (dacă e pe server)
+    try:
+        member = await commands.MemberConverter().convert(ctx, target)
+        if member.top_role >= ctx.author.top_role:
+            return await ctx.send("❌ Nu poți bana pe cineva cu grad egal sau mai mare!", delete_after=5)
+        
+        await member.ban(reason=reason)
+        await ctx.send(f"✅ {member.name} a fost banat.", delete_after=5)
+        await send_sanction_log("Ban", ctx.author, member, reason)
+        
+    except commands.MemberNotFound:
+        # Dacă nu e pe server, încercăm să-l luăm după ID
+        try:
+            user_id = int(target)
+            user = await bot.fetch_user(user_id)
+            await ctx.guild.ban(user, reason=reason)
+            await ctx.send(f"✅ Utilizatorul cu ID-ul `{user_id}` ({user.name}) a fost banat prin ID.", delete_after=5)
+            await send_sanction_log("Ban prin ID", ctx.author, user, reason)
+        except (ValueError, discord.NotFound):
+            await ctx.send("❌ Nu am găsit membrul pe server și nici ID-ul nu este valid!", delete_after=5)
+        except Exception as e:
+            await ctx.send(f"❌ Eroare la ban prin ID: {e}", delete_after=5)
 
 @bot.command()
 @is_staff_up()
@@ -612,7 +635,7 @@ async def warns(ctx, member: discord.Member = None):
 async def comenzi(ctx):
     if ctx.channel.id != STAFF_CMD_CHANNEL: 
         return await ctx.send(f"❌ Doar în <#{STAFF_CMD_CHANNEL}>", delete_after=6)
-    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user\n**#kick** @user\n**#mute** @user 1h\n**#vmute** @user\n**#unban** ID\n**#unmute** @user\n**#warn** @user\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#setup_ticket**\n**#setup_roles**\n**#setup_apply**")
+    embed = discord.Embed(title="📜 Liste commandes STAFF", color=0x2b2d31, description="Prefix: **#**\n\n**#ban** @user/ID\n**#kick** @user\n**#mute** @user 1h\n**#vmute** @user\n**#unban** ID\n**#unmute** @user\n**#warn** @user\n**#unwarn** @user\n**#warns** @user\n**#clear** 50\n**#lock** / **#unlock**\n**#setup_ticket**\n**#setup_roles**\n**#setup_apply**")
     await ctx.send(embed=embed)
 
 @bot.command()

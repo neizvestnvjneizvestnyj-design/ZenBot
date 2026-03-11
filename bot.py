@@ -13,7 +13,7 @@ import time  # pentru cooldown XP
 from flask import Flask
 from threading import Thread
 
-# ================= KEEP-ALIVE 24/7 =================
+# ================= KEEP-ALIVE 24/7 (REPARAT PENTRU RENDER) =================
 app = Flask('')
 
 @app.route('/')
@@ -21,7 +21,9 @@ def home():
     return "Botul este Online!"
 
 def run():
-    app.run(host='0.0.0.0', port=8080)
+    # Render necesită citirea portului din variabila de mediu PORT
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
 
 def keep_alive():
     t = Thread(target=run)
